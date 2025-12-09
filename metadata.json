@@ -1,0 +1,5 @@
+{
+  "name": "TapNow Clone - AI Workflow",
+  "description": "A node-based generative AI workflow editor featuring infinite canvas, Gemini Pro Image generation (Banana Pro), and Veo Video generation.",
+  "requestFramePermissions": []
+}
