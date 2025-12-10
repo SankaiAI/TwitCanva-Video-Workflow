@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Toolbar } from './components/Toolbar';
-import { CanvasNode } from './components/CanvasNode';
+import { CanvasNode } from './components/canvas/CanvasNode';
 import { ContextMenu } from './components/ContextMenu';
 import { ContextMenuState, NodeData, NodeStatus, NodeType } from './types';
 import { generateImage, generateVideo } from './services/geminiService';
