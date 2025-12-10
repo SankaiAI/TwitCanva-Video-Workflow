@@ -576,6 +576,18 @@ export default function App() {
     );
   };
 
+  const handleGlobalContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if ((e.target as HTMLElement).id === 'canvas-background') {
+      setContextMenu({
+        isOpen: true,
+        x: e.clientX,
+        y: e.clientY,
+        type: 'global'
+      });
+    }
+  };
+
   return (
     <div className="w-screen h-screen bg-[#050505] text-white overflow-hidden select-none font-sans">
       <Toolbar />
@@ -629,6 +641,7 @@ export default function App() {
         onPointerUp={handleGlobalPointerUp}
         onWheel={handleWheel}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleGlobalContextMenu}
       >
         <div
           style={{
