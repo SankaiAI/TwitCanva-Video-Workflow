@@ -116,7 +116,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
 
         {/* Image Editor Node Card */}
         <div
-          className={`relative rounded-2xl bg-[#0f0f0f] border border-neutral-700 transition-all duration-200 flex flex-col shadow-2xl ${selected ? 'ring-1 ring-blue-500/30' : ''}`}
+          className={`relative rounded-2xl transition-all duration-200 flex flex-col ${inputUrl ? '' : 'bg-[#0f0f0f] border border-neutral-700 shadow-2xl'} ${selected ? 'ring-1 ring-blue-500/30' : ''}`}
           style={{
             width: inputUrl ? 'auto' : '340px',
             maxWidth: inputUrl ? '500px' : 'none'
@@ -135,14 +135,14 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
 
           {/* Content Area */}
           <div
-            className={`flex flex-col items-center justify-center ${inputUrl ? 'p-2' : 'p-6'}`}
+            className={`flex flex-col items-center justify-center ${inputUrl ? 'p-0' : 'p-6'}`}
             style={{ minHeight: inputUrl ? 'auto' : '380px' }}
           >
             {inputUrl ? (
               <img
                 src={inputUrl}
                 alt="Input"
-                className="rounded-xl w-full h-auto object-cover border border-neutral-800"
+                className={`rounded-xl w-full h-auto object-cover ${selected ? 'ring-2 ring-blue-500 shadow-2xl' : ''}`}
                 style={{ maxHeight: '500px' }}
                 draggable={false}
               />

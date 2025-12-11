@@ -51,8 +51,8 @@ app.post('/api/generate-image', async (req, res) => {
         }
 
         const ai = getClient();
-        const model = 'gemini-3.0-pro-image-preview'; // Updated to 3.0 Pro per intention, was 'gemini-3-pro-image-preview' in old code, verify correct model name if needed or assume user intent. Using same as previous file but '3.0' is standard naming. Wait, previous code had 'gemini-3-pro-image-preview'. I will stick to that to be safe.
-        const modelName = 'gemini-3-pro-image-preview'; // "Banana Pro"
+        const model = 'gemini-2.5-flash-image-preview';
+        const modelName = 'gemini-2.5-flash-image-preview';
 
         const apiRatio = mapAspectRatio(aspectRatio);
 
