@@ -14,7 +14,7 @@ export const useNodeManagement = () => {
     // ============================================================================
 
     const [nodes, setNodes] = useState<NodeData[]>([]);
-    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
     // ============================================================================
     // NODE OPERATIONS
@@ -52,7 +52,7 @@ export const useNodeManagement = () => {
         };
 
         setNodes(prev => [...prev, newNode]);
-        setSelectedNodeId(newNode.id);
+        setSelectedNodeIds([newNode.id]);
 
         return newNode.id;
     };
@@ -72,9 +72,23 @@ export const useNodeManagement = () => {
      */
     const deleteNode = (id: string) => {
         setNodes(prev => prev.filter(n => n.id !== id));
-        if (selectedNodeId === id) {
-            setSelectedNodeId(null);
-        }
+        setSelectedNodeIds(prev => prev.filter(nodeId => nodeId !== id));
+    };
+
+    /**
+     * Deletes multiple nodes by IDs
+     * @param ids - Array of node IDs to delete
+     */
+    const deleteNodes = (ids: string[]) => {
+        setNodes(prev => prev.filter(n => !ids.includes(n.id)));
+        setSelectedNodeIds([]);
+    };
+
+    /**
+     * Clears all node selections
+     */
+    const clearSelection = () => {
+        setSelectedNodeIds([]);
     };
 
     /**
@@ -138,7 +152,7 @@ export const useNodeManagement = () => {
                 }
 
                 setNodes(prev => [...prev, newNode]);
-                setSelectedNodeId(newNodeId);
+                setSelectedNodeIds([newNodeId]);
             }
         } else {
             // Global menu - add at click position
@@ -155,11 +169,13 @@ export const useNodeManagement = () => {
     return {
         nodes,
         setNodes,
-        selectedNodeId,
-        setSelectedNodeId,
+        selectedNodeIds,
+        setSelectedNodeIds,
         addNode,
         updateNode,
         deleteNode,
+        deleteNodes,
+        clearSelection,
         handleSelectTypeFromMenu
     };
 };

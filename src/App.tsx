@@ -17,8 +17,11 @@ import { useNodeManagement } from './hooks/useNodeManagement';
 import { useConnectionDragging } from './hooks/useConnectionDragging';
 import { useNodeDragging } from './hooks/useNodeDragging';
 import { useGeneration } from './hooks/useGeneration';
+import { useSelectionBox } from './hooks/useSelectionBox';
+import { useGroupManagement } from './hooks/useGroupManagement';
 import { extractVideoLastFrame } from './utils/videoHelpers';
 import { calculateConnectionPath } from './utils/connectionHelpers';
+import { SelectionBoundingBox } from './components/canvas/SelectionBoundingBox';
 
 // ============================================================================
 // MAIN COMPONENT
@@ -52,11 +55,13 @@ export default function App() {
   const {
     nodes,
     setNodes,
-    selectedNodeId,
-    setSelectedNodeId,
+    selectedNodeIds,
+    setSelectedNodeIds,
     addNode,
     updateNode,
     deleteNode,
+    deleteNodes,
+    clearSelection,
     handleSelectTypeFromMenu
   } = useNodeManagement();
 
@@ -86,6 +91,22 @@ export default function App() {
 
   const { handleGenerate } = useGeneration({ nodes, updateNode });
 
+  const {
+    selectionBox,
+    isSelecting,
+    startSelection,
+    updateSelection,
+    endSelection,
+    clearSelectionBox
+  } = useSelectionBox();
+
+  const {
+    groups,
+    groupNodes,
+    ungroupNodes,
+    getCommonGroup
+  } = useGroupManagement();
+
   // ============================================================================
   // EFFECTS
   // ============================================================================
@@ -105,25 +126,28 @@ export default function App() {
     return () => canvas.removeEventListener('wheel', handleNativeWheel);
   }, []);
 
-  // Keyboard shortcuts for deletion
+  // Keyboard shortcuts for deletion and selection clearing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName.toLowerCase();
       if (activeTag === 'input' || activeTag === 'textarea') return;
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedNodeId) {
-          deleteNode(selectedNodeId);
+        if (selectedNodeIds.length > 0) {
+          deleteNodes(selectedNodeIds);
           setContextMenu(prev => ({ ...prev, isOpen: false }));
         } else if (selectedConnection) {
           deleteSelectedConnection(setNodes);
         }
+      } else if (e.key === 'Escape') {
+        clearSelection();
+        clearSelectionBox();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, selectedConnection, deleteNode, deleteSelectedConnection]);
+  }, [selectedNodeIds, selectedConnection, deleteNodes, deleteSelectedConnection, clearSelection, clearSelectionBox]);
 
   // ============================================================================
   // EVENT HANDLERS
@@ -131,38 +155,60 @@ export default function App() {
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).id === 'canvas-background') {
-      startPanning(e);
-      setSelectedNodeId(null);
-      setSelectedConnection(null);
-      setContextMenu(prev => ({ ...prev, isOpen: false }));
+      // Left-click (button 0): Start selection box
+      if (e.button === 0) {
+        startSelection(e);
+        clearSelection();
+        setSelectedConnection(null);
+        setContextMenu(prev => ({ ...prev, isOpen: false }));
+      }
+      // Middle-click (button 1) or other: Start panning
+      else {
+        startPanning(e);
+        setSelectedConnection(null);
+        setContextMenu(prev => ({ ...prev, isOpen: false }));
+      }
     }
   };
 
   const handleGlobalPointerMove = (e: React.PointerEvent) => {
-    // 1. Handle Node Dragging
-    if (updateNodeDrag(e, viewport, setNodes)) return;
+    // 1. Handle Selection Box Update
+    if (updateSelection(e)) return;
 
-    // 2. Handle Connection Dragging
+    // 2. Handle Node Dragging
+    if (updateNodeDrag(e, viewport, setNodes, selectedNodeIds)) return;
+
+    // 3. Handle Connection Dragging
     if (updateConnectionDrag(e, nodes, viewport)) return;
 
-    // 3. Handle Canvas Panning
-    updatePanning(e, setViewport);
+    // 4. Handle Canvas Panning (disabled when selection box is active)
+    if (!isSelecting) {
+      updatePanning(e, setViewport);
+    }
   };
 
   const handleGlobalPointerUp = (e: React.PointerEvent) => {
-    // 1. Handle Connection Drop
+    // 1. Handle Selection Box End
+    if (isSelecting) {
+      const selectedIds = endSelection(nodes, viewport);
+      setSelectedNodeIds(selectedIds);
+      releasePointerCapture(e);
+      return;
+    }
+
+    // 2. Handle Connection Drop
     if (completeConnectionDrag(handleAddNext, setNodes)) {
       releasePointerCapture(e);
       return;
     }
 
-    // 2. Stop Panning
+    // 3. Stop Panning
     endPanning();
 
-    // 3. Stop Node Dragging
+    // 4. Stop Node Dragging
     endNodeDrag();
 
-    // 4. Release capture
+    // 5. Release capture
     releasePointerCapture(e);
   };
 
@@ -400,15 +446,88 @@ export default function App() {
                 onUpdate={updateNode}
                 onGenerate={handleGenerate}
                 onAddNext={handleAddNext}
-                selected={selectedNodeId === node.id}
-                onNodePointerDown={(e) => handleNodePointerDown(e, node.id, setSelectedNodeId)}
+                selected={selectedNodeIds.includes(node.id)}
+                onNodePointerDown={(e) => {
+                  // If clicking on an already-selected node, preserve selection for multi-drag
+                  if (selectedNodeIds.includes(node.id)) {
+                    handleNodePointerDown(e, node.id, undefined);
+                  } else {
+                    handleNodePointerDown(e, node.id, setSelectedNodeIds);
+                  }
+                }}
                 onContextMenu={handleNodeContextMenu}
-                onSelect={setSelectedNodeId}
+                onSelect={(id) => setSelectedNodeIds([id])}
                 onConnectorDown={handleConnectorPointerDown}
                 isHoveredForConnection={hoveredNodeId === node.id}
               />
             ))}
           </div>
+
+          {/* Selection Box Overlay */}
+          {selectionBox.isActive && (
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: Math.min(selectionBox.startX, selectionBox.endX),
+                top: Math.min(selectionBox.startY, selectionBox.endY),
+                width: Math.abs(selectionBox.endX - selectionBox.startX),
+                height: Math.abs(selectionBox.endY - selectionBox.startY),
+                border: '2px solid #3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                zIndex: 1000
+              }}
+            />
+          )}
+
+          {/* Selection Bounding Box - for selected nodes */}
+          {selectedNodeIds.length > 0 && !selectionBox.isActive && (
+            <SelectionBoundingBox
+              selectedNodes={nodes.filter(n => selectedNodeIds.includes(n.id))}
+              group={getCommonGroup(selectedNodeIds)}
+              viewport={viewport}
+              onGroup={() => groupNodes(selectedNodeIds, setNodes)}
+              onUngroup={() => {
+                const group = getCommonGroup(selectedNodeIds);
+                if (group) ungroupNodes(group.id, setNodes);
+              }}
+              onBoundingBoxPointerDown={(e) => {
+                // Start dragging all selected nodes when clicking on bounding box
+                e.stopPropagation();
+                if (selectedNodeIds.length > 0) {
+                  handleNodePointerDown(e, selectedNodeIds[0], undefined);
+                }
+              }}
+            />
+          )}
+
+          {/* Group Bounding Boxes - for all groups (even when not selected) */}
+          {groups.map(group => {
+            const groupNodes = nodes.filter(n => n.groupId === group.id);
+            const isSelected = groupNodes.every(n => selectedNodeIds.includes(n.id)) && groupNodes.length > 0;
+
+            // Don't render if this group is already shown above (when selected)
+            if (isSelected) return null;
+
+            return (
+              <SelectionBoundingBox
+                key={group.id}
+                selectedNodes={groupNodes}
+                group={group}
+                viewport={viewport}
+                onGroup={() => { }} // Already grouped
+                onUngroup={() => ungroupNodes(group.id, setNodes)}
+                onBoundingBoxPointerDown={(e) => {
+                  // Select all nodes in this group and start dragging
+                  e.stopPropagation();
+                  const nodeIds = groupNodes.map(n => n.id);
+                  setSelectedNodeIds(nodeIds);
+                  if (nodeIds.length > 0) {
+                    handleNodePointerDown(e, nodeIds[0], undefined);
+                  }
+                }}
+              />
+            );
+          })}
         </div>
       </div>
 

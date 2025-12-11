@@ -55,7 +55,8 @@ export const useNodeDragging = () => {
     const updateNodeDrag = (
         e: React.PointerEvent,
         viewport: Viewport,
-        onUpdateNodes: (updater: (prev: NodeData[]) => NodeData[]) => void
+        onUpdateNodes: (updater: (prev: NodeData[]) => NodeData[]) => void,
+        selectedNodeIds: string[] = []
     ): boolean => {
         if (!dragNodeRef.current) return false;
 
@@ -63,8 +64,13 @@ export const useNodeDragging = () => {
         const zoomAdjustedDx = e.movementX / viewport.zoom;
         const zoomAdjustedDy = e.movementY / viewport.zoom;
 
+        // If dragging a selected node, move all selected nodes
+        const nodesToMove = selectedNodeIds.includes(nodeId) && selectedNodeIds.length > 1
+            ? selectedNodeIds
+            : [nodeId];
+
         onUpdateNodes(prev => prev.map(n => {
-            if (n.id === nodeId) {
+            if (nodesToMove.includes(n.id)) {
                 return { ...n, x: n.x + zoomAdjustedDx, y: n.y + zoomAdjustedDy };
             }
             return n;

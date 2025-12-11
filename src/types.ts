@@ -26,6 +26,7 @@ export interface NodeData {
   resultUrl?: string; // Image URL or Video URL
   lastFrame?: string; // For Video nodes: base64/url of the last frame to use as input for next node
   parentId?: string; // For connecting lines
+  groupId?: string; // ID of the group this node belongs to
   errorMessage?: string;
 
   // Settings
@@ -47,4 +48,18 @@ export interface Viewport {
   x: number;
   y: number;
   zoom: number;
+}
+
+export interface SelectionBox {
+  isActive: boolean;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
+export interface NodeGroup {
+  id: string;
+  nodeIds: string[];
+  label: string;
 }
