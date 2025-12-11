@@ -44,34 +44,51 @@ const mapAspectRatio = (ratio) => {
 
 app.post('/api/generate-image', async (req, res) => {
     try {
-        const { prompt, aspectRatio, resolution } = req.body;
+        const { prompt, aspectRatio, resolution, imageBase64 } = req.body;
 
         if (!API_KEY) {
             return res.status(500).json({ error: "Server missing API Key config" });
         }
 
         const ai = getClient();
-        const model = 'gemini-2.5-flash-image-preview';
-        const modelName = 'gemini-2.5-flash-image-preview';
+        const model = 'gemini-3-pro-image-preview';
+        const modelName = 'gemini-3-pro-image-preview';
 
         const apiRatio = mapAspectRatio(aspectRatio);
+
+        const parts = [];
+
+        if (imageBase64) {
+            const match = imageBase64.match(/^data:(image\/\w+);base64,/);
+            const mimeType = match ? match[1] : "image/png";
+            const base64Clean = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+            parts.push({
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Clean
+                }
+            });
+        }
+
+        parts.push({ text: prompt });
 
         const response = await ai.models.generateContent({
             model: modelName,
             contents: {
-                parts: [{ text: prompt }]
+                parts: parts
             },
             config: {
-                imageConfig: {
-                    aspectRatio: apiRatio,
-                    imageSize: resolution === "4K" ? "4K" : "1K"
-                }
+                responseModalities: ["TEXT", "IMAGE"],
+                temperature: 1.0,
             }
         });
 
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-            if (part.inlineData) {
-                return res.json({ resultUrl: `data:image/png;base64,${part.inlineData.data}` });
+        const candidates = response.candidates || [];
+        if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
+            for (const part of candidates[0].content.parts) {
+                if (part.inlineData && part.inlineData.data) {
+                    return res.json({ resultUrl: `data:image/png;base64,${part.inlineData.data}` });
+                }
             }
         }
 

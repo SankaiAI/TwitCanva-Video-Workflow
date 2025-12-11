@@ -6,7 +6,7 @@
  * Uses custom hooks for state management and logic separation.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Toolbar } from './components/Toolbar';
 import { CanvasNode } from './components/canvas/CanvasNode';
 import { ContextMenu } from './components/ContextMenu';
@@ -28,6 +28,25 @@ import { ImageEditorModal } from './components/modals/ImageEditorModal';
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
+
+// Helper to convert URL/Blob to Base64
+const urlToBase64 = async (url: string): Promise<string> => {
+  if (url.startsWith('data:image')) return url;
+
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("Error converting URL to base64:", e);
+    return "";
+  }
+};
 
 export default function App() {
   // ============================================================================
@@ -360,11 +379,17 @@ export default function App() {
 
     // Get image from parent node if connected
     let imageUrl: string | undefined;
+
     if (node.parentId) {
       const parentNode = nodes.find(n => n.id === node.parentId);
       if (parentNode?.resultUrl) {
         imageUrl = parentNode.resultUrl;
       }
+    }
+
+    // Also check if the node itself has a resultUrl (from upload/previous gen)
+    if (!imageUrl && node.resultUrl) {
+      imageUrl = node.resultUrl;
     }
 
     setEditorModal({
@@ -668,7 +693,63 @@ export default function App() {
         isOpen={editorModal.isOpen}
         nodeId={editorModal.nodeId || ''}
         imageUrl={editorModal.imageUrl}
+        initialPrompt={nodes.find(n => n.id === editorModal.nodeId)?.prompt}
         onClose={handleCloseImageEditor}
+        onGenerate={async (sourceId, prompt, count) => {
+          handleCloseImageEditor();
+          updateNode(sourceId, { prompt });
+
+          const sourceNode = nodes.find(n => n.id === sourceId);
+          if (!sourceNode) return;
+
+          const startX = sourceNode.x + 360; // Source width + gap
+          const startY = sourceNode.y;
+
+          const newNodes: NodeData[] = [];
+
+          const yStep = 500;
+          const totalHeight = (count - 1) * yStep;
+          const startYOffset = -totalHeight / 2;
+
+          // Create N nodes
+          for (let i = 0; i < count; i++) {
+            newNodes.push({
+              id: crypto.randomUUID(),
+              type: NodeType.IMAGE,
+              x: startX,
+              y: startY + startYOffset + (i * yStep),
+              prompt: prompt,
+              status: NodeStatus.LOADING,
+              model: 'Banana Pro',
+              aspectRatio: 'Auto',
+              resolution: 'Auto',
+              parentId: sourceId
+            });
+          }
+
+          // Add new nodes and edges immediately
+          // Note: State updates might be batched
+          setNodes(prev => [...prev, ...newNodes]);
+
+          // Convert editor image to base64 for generation reference
+          let imageBase64: string | undefined = undefined;
+          if (editorModal.imageUrl) {
+            imageBase64 = await urlToBase64(editorModal.imageUrl);
+          }
+
+          newNodes.forEach(async (node) => {
+            try {
+              const resultUrl = await generateImage({
+                prompt: node.prompt || '',
+                imageBase64: imageBase64
+              });
+              updateNode(node.id, { status: NodeStatus.SUCCESS, resultUrl });
+            } catch (error: any) {
+              updateNode(node.id, { status: NodeStatus.ERROR, errorMessage: error.message });
+            }
+          });
+        }}
+        onUpdate={updateNode}
       />
     </div >
   );

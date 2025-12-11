@@ -1,18 +1,37 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 
 interface ImageEditorModalProps {
     isOpen: boolean;
     nodeId: string;
     imageUrl?: string;
+    initialPrompt?: string;
     onClose: () => void;
+    onGenerate: (id: string, prompt: string, count: number) => void;
+    onUpdate: (id: string, updates: any) => void;
 }
 
 export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
     isOpen,
     nodeId,
     imageUrl,
-    onClose
+    initialPrompt,
+    onClose,
+    onGenerate,
+    onUpdate
 }) => {
+    const [prompt, setPrompt] = useState(initialPrompt || '');
+    const [batchCount, setBatchCount] = useState(4);
+
+    React.useEffect(() => {
+        setPrompt(initialPrompt || '');
+    }, [initialPrompt]);
+
+    const handleGenerateClick = () => {
+        onUpdate(nodeId, { prompt }); // Save prompt to node
+        onGenerate(nodeId, prompt, batchCount);
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -131,19 +150,32 @@ export const ImageEditorModal: React.FC<ImageEditorModalProps> = ({
                     {/* Input Field */}
                     <input
                         type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
                         placeholder="Enter prompt for image generation"
                         className="flex-1 bg-transparent px-2 text-sm text-neutral-200 placeholder-neutral-500 outline-none h-full"
                     />
 
                     {/* Batch Count */}
                     <div className="flex items-center bg-neutral-700/50 rounded-lg px-2 py-1.5 gap-2 text-xs text-neutral-300 font-medium border border-neutral-600">
-                        <button className="hover:text-white px-1">‹</button>
-                        <span>4</span>
-                        <button className="hover:text-white px-1">›</button>
+                        <button
+                            className="hover:text-white px-1 disabled:opacity-50"
+                            onClick={() => setBatchCount(Math.max(1, batchCount - 1))}
+                            disabled={batchCount <= 1}
+                        >‹</button>
+                        <span>{batchCount}</span>
+                        <button
+                            className="hover:text-white px-1 disabled:opacity-50"
+                            onClick={() => setBatchCount(Math.min(4, batchCount + 1))}
+                            disabled={batchCount >= 4}
+                        >›</button>
                     </div>
 
                     {/* Generate Button */}
-                    <button className="px-6 py-2 bg-[#6c85ff] hover:bg-[#5a75ff] rounded-lg text-xs font-bold text-white shadow-lg transition-all flex items-center gap-2">
+                    <button
+                        onClick={handleGenerateClick}
+                        className="px-6 py-2 bg-[#6c85ff] hover:bg-[#5a75ff] rounded-lg text-xs font-bold text-white shadow-lg transition-all flex items-center gap-2"
+                    >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                             <path d="M12 2v20M2 12h20" />
                         </svg>

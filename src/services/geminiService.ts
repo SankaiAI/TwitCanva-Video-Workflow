@@ -5,6 +5,7 @@ export interface GenerateImageParams {
   prompt: string;
   aspectRatio?: string;
   resolution?: string;
+  imageBase64?: string;
 }
 
 export interface GenerateVideoParams {
