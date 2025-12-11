@@ -35,11 +35,17 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
             if (node.type === NodeType.IMAGE || node.type === NodeType.IMAGE_EDITOR) {
                 // Get parent image for image-to-image generation
                 let imageBase64: string | undefined;
-                // Only look for parent if we are not an Editor node trying to generate *from* our own content
-                // Actually, Editor node usually gets input from parent too.
-                const parent = nodes.find(n => n.id === node.parentId);
-                if (parent?.resultUrl) {
-                    imageBase64 = parent.resultUrl;
+
+                // Traverse parent chain to find an image source
+                let currentParentId = node.parentId;
+                while (currentParentId && !imageBase64) {
+                    const parent = nodes.find(n => n.id === currentParentId);
+                    if (parent?.resultUrl) {
+                        imageBase64 = parent.resultUrl;
+                    } else {
+                        // Continue up the chain
+                        currentParentId = parent?.parentId;
+                    }
                 }
 
                 // Generate image
