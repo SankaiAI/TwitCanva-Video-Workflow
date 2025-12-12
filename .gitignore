@@ -25,3 +25,6 @@ dist-ssr
 
 #env
 .env
+
+# Workflow data
+assets/

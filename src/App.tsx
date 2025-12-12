@@ -23,6 +23,7 @@ import { useHistory } from './hooks/useHistory';
 import { extractVideoLastFrame } from './utils/videoHelpers';
 import { calculateConnectionPath } from './utils/connectionHelpers';
 import { SelectionBoundingBox } from './components/canvas/SelectionBoundingBox';
+import { WorkflowPanel } from './components/WorkflowPanel';
 import { ImageEditorModal } from './components/modals/ImageEditorModal';
 
 // ============================================================================
@@ -84,6 +85,10 @@ export default function App() {
       canvasTitleInputRef.current.select();
     }
   }, [isEditingTitle]);
+
+  // Workflow state
+  const [workflowId, setWorkflowId] = useState<string | null>(null);
+  const [isWorkflowPanelOpen, setIsWorkflowPanelOpen] = useState(false);
 
   // ============================================================================
   // CUSTOM HOOKS
@@ -330,6 +335,7 @@ export default function App() {
         clearSelection();
         setSelectedConnection(null);
         setContextMenu(prev => ({ ...prev, isOpen: false }));
+        setIsWorkflowPanelOpen(false);
       }
       // Middle-click (button 1) or other: Start panning
       else {
@@ -638,13 +644,88 @@ export default function App() {
     );
   };
 
+  /**
+   * Handle toolbar + button click - opens context menu next to the button
+   */
+  const handleToolbarAdd = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setContextMenu({
+      isOpen: true,
+      x: rect.right + 10,
+      y: rect.top,
+      type: 'global'
+    });
+  };
+
+  /**
+   * Save current workflow to server
+   */
+  const handleSaveWorkflow = async () => {
+    try {
+      const workflow = {
+        id: workflowId,
+        title: canvasTitle,
+        nodes,
+        groups,
+        viewport
+      };
+
+      const response = await fetch('http://localhost:3001/api/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workflow)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setWorkflowId(result.id);
+        console.log('Workflow saved:', result.id);
+      }
+    } catch (error) {
+      console.error('Failed to save workflow:', error);
+    }
+  };
+
+  /**
+   * Load workflow from server
+   */
+  const handleLoadWorkflow = async (id: string) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/workflows/${id}`);
+      if (response.ok) {
+        const workflow = await response.json();
+        setWorkflowId(workflow.id);
+        setCanvasTitle(workflow.title || 'Untitled');
+        setEditingTitleValue(workflow.title || 'Untitled');
+        setNodes(workflow.nodes || []);
+        // Reset selection
+        setSelectedNodeIds([]);
+        setIsWorkflowPanelOpen(false);
+        console.log('Workflow loaded:', workflow.id);
+      }
+    } catch (error) {
+      console.error('Failed to load workflow:', error);
+    }
+  };
+
   // ============================================================================
   // RENDER
   // ============================================================================
 
   return (
     <div className="w-screen h-screen bg-[#050505] text-white overflow-hidden select-none font-sans">
-      <Toolbar />
+      <Toolbar
+        onAddClick={handleToolbarAdd}
+        onWorkflowsClick={() => setIsWorkflowPanelOpen(!isWorkflowPanelOpen)}
+      />
+
+      {/* Workflow Panel */}
+      <WorkflowPanel
+        isOpen={isWorkflowPanelOpen}
+        onClose={() => setIsWorkflowPanelOpen(false)}
+        onLoadWorkflow={handleLoadWorkflow}
+        currentWorkflowId={workflowId || undefined}
+      />
 
       {/* Top Bar */}
       <div className="fixed top-0 left-0 w-full h-14 flex items-center justify-between px-6 z-50 pointer-events-none">
@@ -691,6 +772,12 @@ export default function App() {
           )}
         </div>
         <div className="flex items-center gap-3 pointer-events-auto">
+          <button
+            onClick={handleSaveWorkflow}
+            className="bg-blue-600 hover:bg-blue-500 text-sm px-5 py-2.5 rounded-full flex items-center gap-2 transition-colors font-medium"
+          >
+            💾 Save
+          </button>
           <button className="bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-sm px-5 py-2.5 rounded-full flex items-center gap-2 transition-colors">
             Gift Earn Tapies
           </button>

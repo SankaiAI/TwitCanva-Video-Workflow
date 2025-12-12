@@ -9,15 +9,27 @@ import {
   Plus
 } from 'lucide-react';
 
-export const Toolbar: React.FC = () => {
+interface ToolbarProps {
+  onAddClick?: (e: React.MouseEvent) => void;
+  onWorkflowsClick?: (e: React.MouseEvent) => void;
+}
+
+export const Toolbar: React.FC<ToolbarProps> = ({ onAddClick, onWorkflowsClick }) => {
   return (
     <div className="fixed left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 p-1 bg-[#1a1a1a] border border-neutral-800 rounded-full shadow-2xl z-50">
-      <button className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200 hover:scale-110 transition-all duration-200 mb-2">
+      <button
+        className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200 hover:scale-110 transition-all duration-200 mb-2"
+        onClick={onAddClick}
+      >
         <Plus size={20} />
       </button>
 
       <div className="flex flex-col gap-4 py-2 px-1">
-        <button className="text-neutral-400 hover:text-white hover:scale-125 transition-all duration-200">
+        <button
+          className="text-neutral-400 hover:text-white hover:scale-125 transition-all duration-200"
+          onClick={onWorkflowsClick}
+          title="My Workflows"
+        >
           <LayoutGrid size={20} />
         </button>
         <button className="text-neutral-400 hover:text-white hover:scale-125 transition-all duration-200">
