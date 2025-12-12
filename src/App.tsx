@@ -8,7 +8,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Toolbar } from './components/Toolbar';
+import { TopBar } from './components/TopBar';
 import { CanvasNode } from './components/canvas/CanvasNode';
+import { ConnectionsLayer } from './components/canvas/ConnectionsLayer';
 import { ContextMenu } from './components/ContextMenu';
 import { ContextMenuState, NodeData, NodeStatus, NodeType } from './types';
 import { generateImage, generateVideo } from './services/geminiService';
@@ -20,8 +22,10 @@ import { useGeneration } from './hooks/useGeneration';
 import { useSelectionBox } from './hooks/useSelectionBox';
 import { useGroupManagement } from './hooks/useGroupManagement';
 import { useHistory } from './hooks/useHistory';
+import { useCanvasTitle } from './hooks/useCanvasTitle';
+import { useWorkflow } from './hooks/useWorkflow';
+import { useImageEditor } from './hooks/useImageEditor';
 import { extractVideoLastFrame } from './utils/videoHelpers';
-import { calculateConnectionPath } from './utils/connectionHelpers';
 import { SelectionBoundingBox } from './components/canvas/SelectionBoundingBox';
 import { WorkflowPanel } from './components/WorkflowPanel';
 import { ImageEditorModal } from './components/modals/ImageEditorModal';
@@ -62,34 +66,17 @@ export default function App() {
     type: 'global'
   });
 
-  // Image Editor Modal state
-  const [editorModal, setEditorModal] = useState<{
-    isOpen: boolean;
-    nodeId: string | null;
-    imageUrl?: string;
-  }>({
-    isOpen: false,
-    nodeId: null
-  });
 
-  // Canvas title state
-  const [canvasTitle, setCanvasTitle] = useState('Untitled');
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editingTitleValue, setEditingTitleValue] = useState('Untitled');
-  const canvasTitleInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Focus input when entering edit mode
-  React.useEffect(() => {
-    if (isEditingTitle && canvasTitleInputRef.current) {
-      canvasTitleInputRef.current.focus();
-      canvasTitleInputRef.current.select();
-    }
-  }, [isEditingTitle]);
-
-  // Workflow state
-  const [workflowId, setWorkflowId] = useState<string | null>(null);
-  const [isWorkflowPanelOpen, setIsWorkflowPanelOpen] = useState(false);
-  const [workflowPanelY, setWorkflowPanelY] = useState(0);
+  // Canvas title state (via hook)
+  const {
+    canvasTitle,
+    setCanvasTitle,
+    isEditingTitle,
+    setIsEditingTitle,
+    editingTitleValue,
+    setEditingTitleValue,
+    canvasTitleInputRef
+  } = useCanvasTitle();
 
   // ============================================================================
   // CUSTOM HOOKS
@@ -170,6 +157,34 @@ export default function App() {
     canUndo,
     canRedo
   } = useHistory({ nodes, groups }, 50);
+
+  // Workflow management
+  const {
+    workflowId,
+    isWorkflowPanelOpen,
+    workflowPanelY,
+    handleSaveWorkflow,
+    handleLoadWorkflow,
+    handleWorkflowsClick,
+    closeWorkflowPanel
+  } = useWorkflow({
+    nodes,
+    groups,
+    viewport,
+    canvasTitle,
+    setNodes,
+    setSelectedNodeIds,
+    setCanvasTitle,
+    setEditingTitleValue
+  });
+
+  // Image editor modal
+  const {
+    editorModal,
+    handleOpenImageEditor,
+    handleCloseImageEditor,
+    handleUpload
+  } = useImageEditor({ nodes, updateNode });
 
   // ============================================================================
   // EFFECTS
@@ -336,7 +351,7 @@ export default function App() {
         clearSelection();
         setSelectedConnection(null);
         setContextMenu(prev => ({ ...prev, isOpen: false }));
-        setIsWorkflowPanelOpen(false);
+        closeWorkflowPanel();
       }
       // Middle-click (button 1) or other: Start panning
       else {
@@ -470,51 +485,6 @@ export default function App() {
   };
 
   // ============================================================================
-  // IMAGE EDITOR MODAL HANDLERS
-  // ============================================================================
-
-  const handleOpenImageEditor = (nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return;
-
-    // Get image from parent node if connected (use first parent for editor)
-    let imageUrl: string | undefined;
-
-    if (node.parentIds && node.parentIds.length > 0) {
-      const parentNode = nodes.find(n => n.id === node.parentIds![0]);
-      if (parentNode?.resultUrl) {
-        imageUrl = parentNode.resultUrl;
-      }
-    }
-
-    // Also check if the node itself has a resultUrl (from upload/previous gen)
-    if (!imageUrl && node.resultUrl) {
-      imageUrl = node.resultUrl;
-    }
-
-    setEditorModal({
-      isOpen: true,
-      nodeId,
-      imageUrl
-    });
-  };
-
-  const handleCloseImageEditor = () => {
-    setEditorModal({
-      isOpen: false,
-      nodeId: null
-    });
-  };
-
-  // Handler for image upload in Image nodes
-  const handleUpload = (nodeId: string, imageDataUrl: string) => {
-    updateNode(nodeId, {
-      resultUrl: imageDataUrl,
-      status: NodeStatus.SUCCESS
-    });
-  };
-
-  // ============================================================================
   // TEXT NODE HANDLERS
   // ============================================================================
 
@@ -568,83 +538,6 @@ export default function App() {
   // RENDERING
   // ============================================================================
 
-  const renderConnections = () => {
-    // For each node, render connections to all its parents
-    const connections: React.ReactNode[] = [];
-
-    nodes.forEach(node => {
-      if (!node.parentIds || node.parentIds.length === 0) return;
-
-      node.parentIds.forEach(parentId => {
-        const parent = nodes.find(n => n.id === parentId);
-        if (!parent) return;
-
-        const startX = parent.x + 340;
-        const startY = parent.y + 150;
-        const endX = node.x;
-        const endY = node.y + 150;
-
-        const path = calculateConnectionPath(startX, startY, endX, endY, 'right');
-        const isSelected = selectedConnection?.parentId === parentId && selectedConnection?.childId === node.id;
-
-        connections.push(
-          <g
-            key={`${parent.id}-${node.id}`}
-            onClick={(e) => handleEdgeClick(e, parent.id, node.id)}
-            className="cursor-pointer group pointer-events-auto"
-          >
-            <path d={path} stroke="transparent" strokeWidth="20" fill="none" />
-            <path
-              d={path}
-              stroke={isSelected ? "#fff" : "#333"}
-              strokeWidth="2"
-              fill="none"
-              className={`transition-colors ${!isSelected ? 'group-hover:stroke-white' : ''}`}
-            />
-          </g>
-        );
-      });
-    });
-
-    // Temporary Connection (Drag)
-    let tempLine = null;
-    if (isDraggingConnection && connectionStart && tempConnectionEnd) {
-      const startNode = nodes.find(n => n.id === connectionStart.nodeId);
-      if (startNode) {
-        const startX = connectionStart.handle === 'right' ? startNode.x + 340 : startNode.x;
-        const startY = startNode.y + 150;
-        const endX = (tempConnectionEnd.x - viewport.x) / viewport.zoom;
-        const endY = (tempConnectionEnd.y - viewport.y) / viewport.zoom;
-
-        const path = calculateConnectionPath(
-          startX,
-          startY,
-          endX,
-          endY,
-          connectionStart.handle
-        );
-
-        tempLine = (
-          <path
-            d={path}
-            stroke="#fff"
-            strokeWidth="2"
-            strokeDasharray="5,5"
-            fill="none"
-            className="pointer-events-none opacity-50"
-          />
-        );
-      }
-    }
-
-    return (
-      <>
-        {connections}
-        {tempLine}
-      </>
-    );
-  };
-
   /**
    * Handle toolbar + button click - opens context menu next to the button
    */
@@ -658,57 +551,6 @@ export default function App() {
     });
   };
 
-  /**
-   * Save current workflow to server
-   */
-  const handleSaveWorkflow = async () => {
-    try {
-      const workflow = {
-        id: workflowId,
-        title: canvasTitle,
-        nodes,
-        groups,
-        viewport
-      };
-
-      const response = await fetch('http://localhost:3001/api/workflows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workflow)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setWorkflowId(result.id);
-        console.log('Workflow saved:', result.id);
-      }
-    } catch (error) {
-      console.error('Failed to save workflow:', error);
-    }
-  };
-
-  /**
-   * Load workflow from server
-   */
-  const handleLoadWorkflow = async (id: string) => {
-    try {
-      const response = await fetch(`http://localhost:3001/api/workflows/${id}`);
-      if (response.ok) {
-        const workflow = await response.json();
-        setWorkflowId(workflow.id);
-        setCanvasTitle(workflow.title || 'Untitled');
-        setEditingTitleValue(workflow.title || 'Untitled');
-        setNodes(workflow.nodes || []);
-        // Reset selection
-        setSelectedNodeIds([]);
-        setIsWorkflowPanelOpen(false);
-        console.log('Workflow loaded:', workflow.id);
-      }
-    } catch (error) {
-      console.error('Failed to load workflow:', error);
-    }
-  };
-
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -717,93 +559,30 @@ export default function App() {
     <div className="w-screen h-screen bg-[#050505] text-white overflow-hidden select-none font-sans">
       <Toolbar
         onAddClick={handleToolbarAdd}
-        onWorkflowsClick={(e) => {
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          setWorkflowPanelY(rect.top);
-          setIsWorkflowPanelOpen(!isWorkflowPanelOpen);
-        }}
+        onWorkflowsClick={handleWorkflowsClick}
       />
 
       {/* Workflow Panel */}
       <WorkflowPanel
         isOpen={isWorkflowPanelOpen}
-        onClose={() => setIsWorkflowPanelOpen(false)}
+        onClose={closeWorkflowPanel}
         onLoadWorkflow={handleLoadWorkflow}
         currentWorkflowId={workflowId || undefined}
         panelY={workflowPanelY}
       />
 
+
       {/* Top Bar */}
-      <div className="fixed top-0 left-0 w-full h-14 flex items-center justify-between px-6 z-50 pointer-events-none">
-        <div className="flex items-center gap-3 pointer-events-auto">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600"></div>
-          {isEditingTitle ? (
-            <input
-              ref={canvasTitleInputRef}
-              type="text"
-              value={editingTitleValue}
-              onChange={(e) => setEditingTitleValue(e.target.value)}
-              onBlur={() => {
-                if (editingTitleValue.trim()) {
-                  setCanvasTitle(editingTitleValue.trim());
-                } else {
-                  setEditingTitleValue(canvasTitle);
-                }
-                setIsEditingTitle(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (editingTitleValue.trim()) {
-                    setCanvasTitle(editingTitleValue.trim());
-                  }
-                  setIsEditingTitle(false);
-                } else if (e.key === 'Escape') {
-                  setEditingTitleValue(canvasTitle);
-                  setIsEditingTitle(false);
-                }
-              }}
-              className="font-semibold text-neutral-300 bg-transparent border-b border-blue-500 outline-none min-w-[100px]"
-            />
-          ) : (
-            <span
-              className="font-semibold text-neutral-300 cursor-pointer hover:text-white transition-colors"
-              onDoubleClick={() => {
-                setEditingTitleValue(canvasTitle);
-                setIsEditingTitle(true);
-              }}
-              title="Double-click to rename"
-            >
-              {canvasTitle}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 pointer-events-auto">
-          <button
-            onClick={handleSaveWorkflow}
-            className="bg-blue-600 hover:bg-blue-500 text-sm px-5 py-2.5 rounded-full flex items-center gap-2 transition-colors font-medium"
-          >
-            💾 Save
-          </button>
-          <button className="bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-sm px-5 py-2.5 rounded-full flex items-center gap-2 transition-colors">
-            Gift Earn Tapies
-          </button>
-          <button className="bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-sm px-5 py-2.5 rounded-full flex items-center gap-2 transition-colors">
-            200
-          </button>
-          <button className="bg-neutral-900 border border-neutral-700 hover:bg-neutral-800 text-sm px-5 py-2.5 rounded-full flex items-center gap-2 transition-colors">
-            ✨ Community
-          </button>
-          <button className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-          </button>
-        </div>
-      </div>
+      <TopBar
+        canvasTitle={canvasTitle}
+        isEditingTitle={isEditingTitle}
+        editingTitleValue={editingTitleValue}
+        canvasTitleInputRef={canvasTitleInputRef}
+        setCanvasTitle={setCanvasTitle}
+        setIsEditingTitle={setIsEditingTitle}
+        setEditingTitleValue={setEditingTitleValue}
+        onSave={handleSaveWorkflow}
+      />
 
       {/* Canvas */}
       <div
@@ -838,7 +617,15 @@ export default function App() {
 
           {/* SVG Layer for Connections */}
           <svg className="absolute top-0 left-0 w-full h-full overflow-visible pointer-events-none z-0">
-            {renderConnections()}
+            <ConnectionsLayer
+              nodes={nodes}
+              viewport={viewport}
+              isDraggingConnection={isDraggingConnection}
+              connectionStart={connectionStart}
+              tempConnectionEnd={tempConnectionEnd}
+              selectedConnection={selectedConnection}
+              onEdgeClick={handleEdgeClick}
+            />
           </svg>
 
           {/* Nodes Layer */}
