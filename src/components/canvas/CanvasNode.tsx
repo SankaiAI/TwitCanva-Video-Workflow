@@ -25,6 +25,7 @@ interface CanvasNodeProps {
   isHoveredForConnection?: boolean;
   onOpenEditor?: (nodeId: string) => void;
   onUpload?: (nodeId: string, imageDataUrl: string) => void;
+  onExpand?: (imageUrl: string) => void;
   // Text node callbacks
   onWriteContent?: (nodeId: string) => void;
   onTextToVideo?: (nodeId: string) => void;
@@ -44,6 +45,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   isHoveredForConnection,
   onOpenEditor,
   onUpload,
+  onExpand,
   onWriteContent,
   onTextToVideo
 }) => {
@@ -239,6 +241,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
           isSuccess={isSuccess}
           getAspectRatioStyle={getAspectRatioStyle}
           onUpload={onUpload}
+          onExpand={onExpand}
           onWriteContent={onWriteContent}
           onTextToVideo={onTextToVideo}
           onUpdate={onUpdate}

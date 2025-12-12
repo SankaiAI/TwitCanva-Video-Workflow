@@ -18,6 +18,7 @@ interface NodeContentProps {
     isSuccess: boolean;
     getAspectRatioStyle: () => { aspectRatio: string };
     onUpload?: (nodeId: string, imageDataUrl: string) => void;
+    onExpand?: (imageUrl: string) => void;
     // Text node callbacks
     onWriteContent?: (nodeId: string) => void;
     onTextToVideo?: (nodeId: string) => void;
@@ -33,6 +34,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({
     isSuccess,
     getAspectRatioStyle,
     onUpload,
+    onExpand,
     onWriteContent,
     onTextToVideo,
     onUpdate
@@ -89,8 +91,10 @@ export const NodeContent: React.FC<NodeContentProps> = ({
                             </button>
                         )}
                         <button
+                            onClick={() => data.resultUrl && onExpand?.(data.resultUrl)}
                             onPointerDown={(e) => e.stopPropagation()}
                             className="p-1.5 bg-black/50 hover:bg-black/80 rounded-lg text-white backdrop-blur-md"
+                            title="View full size"
                         >
                             <Maximize2 size={14} />
                         </button>

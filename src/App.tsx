@@ -239,6 +239,17 @@ export default function App() {
     setIsHistoryPanelOpen(false);
   };
 
+  // Fullscreen image preview state
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
+
+  const handleExpandImage = (imageUrl: string) => {
+    setExpandedImageUrl(imageUrl);
+  };
+
+  const handleCloseExpand = () => {
+    setExpandedImageUrl(null);
+  };
+
   /**
    * Handle selecting an asset from history - creates new node with the image/video
    */
@@ -284,7 +295,9 @@ export default function App() {
     return () => canvas.removeEventListener('wheel', handleNativeWheel);
   }, []);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts - undo/redo/delete/copy/paste
+  const clipboardRef = React.useRef<NodeData[]>([]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName.toLowerCase();
@@ -304,6 +317,36 @@ export default function App() {
         return;
       }
 
+      // Copy: Ctrl+C
+      if (e.ctrlKey && e.key === 'c') {
+        if (selectedNodeIds.length > 0) {
+          const selectedNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
+          clipboardRef.current = JSON.parse(JSON.stringify(selectedNodes)); // Deep copy
+          console.log(`Copied ${selectedNodes.length} node(s)`);
+        }
+        return;
+      }
+
+      // Paste: Ctrl+V
+      if (e.ctrlKey && e.key === 'v') {
+        if (clipboardRef.current.length > 0) {
+          const pasteOffset = 50;
+          const newNodes: NodeData[] = clipboardRef.current.map(node => ({
+            ...node,
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            x: node.x + pasteOffset,
+            y: node.y + pasteOffset,
+            parentIds: undefined,
+            groupId: undefined
+          }));
+
+          setNodes(prev => [...prev, ...newNodes]);
+          setSelectedNodeIds(newNodes.map(n => n.id));
+          console.log(`Pasted ${newNodes.length} node(s)`);
+        }
+        return;
+      }
+
       // Delete selected nodes or connection
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedNodeIds.length > 0) {
@@ -320,7 +363,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeIds, selectedConnection, deleteNodes, deleteSelectedConnection, clearSelection, clearSelectionBox, undo, redo]);
+  }, [selectedNodeIds, selectedConnection, deleteNodes, deleteSelectedConnection, clearSelection, clearSelectionBox, undo, redo, nodes, setNodes, setSelectedNodeIds]);
 
   // Cleanup invalid groups (groups with less than 2 nodes)
   useEffect(() => {
@@ -751,6 +794,7 @@ export default function App() {
                 isHoveredForConnection={hoveredNodeId === node.id}
                 onOpenEditor={handleOpenImageEditor}
                 onUpload={handleUpload}
+                onExpand={handleExpandImage}
                 onWriteContent={handleWriteContent}
                 onTextToVideo={handleTextToVideo}
               />
@@ -918,6 +962,29 @@ export default function App() {
         }}
         onUpdate={updateNode}
       />
+
+      {/* Fullscreen Image Preview Modal */}
+      {expandedImageUrl && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[100] cursor-pointer"
+          onClick={handleCloseExpand}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            onClick={handleCloseExpand}
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={expandedImageUrl}
+            alt="Fullscreen preview"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div >
   );
 }
