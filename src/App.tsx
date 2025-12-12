@@ -29,6 +29,7 @@ import { extractVideoLastFrame } from './utils/videoHelpers';
 import { SelectionBoundingBox } from './components/canvas/SelectionBoundingBox';
 import { WorkflowPanel } from './components/WorkflowPanel';
 import { HistoryPanel } from './components/HistoryPanel';
+import { ChatPanel, ChatBubble } from './components/ChatPanel';
 import { ImageEditorModal } from './components/modals/ImageEditorModal';
 
 // ============================================================================
@@ -250,6 +251,17 @@ export default function App() {
 
   const handleCloseExpand = () => {
     setExpandedImageUrl(null);
+  };
+
+  // Chat panel state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const toggleChat = () => {
+    setIsChatOpen(prev => !prev);
+  };
+
+  const closeChat = () => {
+    setIsChatOpen(false);
   };
 
   /**
@@ -705,6 +717,10 @@ export default function App() {
         panelY={historyPanelY}
       />
 
+      {/* Agent Chat */}
+      <ChatBubble onClick={toggleChat} isOpen={isChatOpen} />
+      <ChatPanel isOpen={isChatOpen} onClose={closeChat} />
+
       {/* Top Bar */}
       <TopBar
         canvasTitle={canvasTitle}
@@ -717,6 +733,7 @@ export default function App() {
         onSave={handleSaveWithTracking}
         onNew={handleNewCanvas}
         hasUnsavedChanges={hasUnsavedChanges}
+        isChatOpen={isChatOpen}
       />
 
       {/* Canvas */}
@@ -888,7 +905,7 @@ export default function App() {
       />
 
       {/* Zoom Slider */}
-      < div className="fixed bottom-6 right-6 bg-neutral-900 border border-neutral-700 rounded-full px-4 py-2 flex items-center gap-3 z-50" >
+      < div className="fixed bottom-6 left-16 bg-neutral-900 border border-neutral-700 rounded-full px-4 py-2 flex items-center gap-3 z-50" >
         <span className="text-xs text-neutral-400">Zoom</span>
         <input
           type="range"
