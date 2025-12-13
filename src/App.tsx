@@ -426,67 +426,85 @@ export default function App() {
 
   // Bidirectional prompt sync between Text nodes and connected child nodes
   const isSyncingPrompt = React.useRef(false);
+  const syncTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const syncPrompt = React.useCallback((sourceNodeId: string, newPrompt: string) => {
     if (isSyncingPrompt.current) return;
 
-    isSyncingPrompt.current = true;
+    // Debounce sync operations
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
 
-    setNodes(prev => {
-      const sourceNode = prev.find(n => n.id === sourceNodeId);
-      if (!sourceNode) {
-        isSyncingPrompt.current = false;
-        return prev;
-      }
+    syncTimeoutRef.current = setTimeout(() => {
+      isSyncingPrompt.current = true;
 
-      // If source is a Text node, sync to ALL child nodes (nodes that have this Text node as parent)
-      if (sourceNode.type === NodeType.TEXT) {
-        return prev.map(n => {
-          // Check if this node has the text node as a parent
-          if (n.parentIds?.includes(sourceNodeId) && n.prompt !== newPrompt) {
-            return { ...n, prompt: newPrompt };
+      setNodes(prev => {
+        const sourceNode = prev.find(n => n.id === sourceNodeId);
+        if (!sourceNode) {
+          isSyncingPrompt.current = false;
+          return prev;
+        }
+
+        // If source is a Text node, sync to ALL child nodes (nodes that have this Text node as parent)
+        if (sourceNode.type === NodeType.TEXT) {
+          // Check if any child needs updating
+          const needsUpdate = prev.some(n => n.parentIds?.includes(sourceNodeId) && n.prompt !== newPrompt);
+          if (!needsUpdate) {
+            isSyncingPrompt.current = false;
+            return prev;
           }
-          return n;
-        });
-      }
-
-      // If source is a Video/Image node, find Text nodes that are parents and update them
-      if (sourceNode.type === NodeType.VIDEO || sourceNode.type === NodeType.IMAGE) {
-        // Find parent Text nodes
-        const parentTextNodeIds = sourceNode.parentIds?.filter(parentId => {
-          const parent = prev.find(n => n.id === parentId);
-          return parent?.type === NodeType.TEXT;
-        }) || [];
-
-        if (parentTextNodeIds.length > 0) {
           return prev.map(n => {
-            if (parentTextNodeIds.includes(n.id) && n.prompt !== newPrompt) {
+            if (n.parentIds?.includes(sourceNodeId) && n.prompt !== newPrompt) {
               return { ...n, prompt: newPrompt };
             }
             return n;
           });
         }
-      }
 
-      isSyncingPrompt.current = false;
-      return prev;
-    });
+        // If source is a Video/Image node, find Text nodes that are parents and update them
+        if (sourceNode.type === NodeType.VIDEO || sourceNode.type === NodeType.IMAGE) {
+          const parentTextNodeIds = sourceNode.parentIds?.filter(parentId => {
+            const parent = prev.find(n => n.id === parentId);
+            return parent?.type === NodeType.TEXT;
+          }) || [];
 
-    // Reset sync flag after a short delay
-    setTimeout(() => {
-      isSyncingPrompt.current = false;
-    }, 0);
+          if (parentTextNodeIds.length > 0) {
+            const needsUpdate = prev.some(n => parentTextNodeIds.includes(n.id) && n.prompt !== newPrompt);
+            if (!needsUpdate) {
+              isSyncingPrompt.current = false;
+              return prev;
+            }
+            return prev.map(n => {
+              if (parentTextNodeIds.includes(n.id) && n.prompt !== newPrompt) {
+                return { ...n, prompt: newPrompt };
+              }
+              return n;
+            });
+          }
+        }
+
+        isSyncingPrompt.current = false;
+        return prev;
+      });
+
+      // Reset sync flag after a short delay
+      setTimeout(() => {
+        isSyncingPrompt.current = false;
+      }, 0);
+    }, 300); // Debounce sync by 300ms
   }, []);
 
   // Wrap updateNode to handle prompt sync
   const updateNodeWithSync = React.useCallback((id: string, updates: Partial<NodeData>) => {
     updateNode(id, updates);
 
-    // If prompt is being updated, handle sync
-    if (updates.prompt !== undefined) {
-      syncPrompt(id, updates.prompt);
-    }
-  }, [updateNode, syncPrompt]);
+    // NOTE: Prompt sync disabled for now to avoid typing lag
+    // If prompt is being updated, handle sync (debounced)
+    // if (updates.prompt !== undefined) {
+    //   syncPrompt(id, updates.prompt);
+    // }
+  }, [updateNode]);
 
   // ============================================================================
   // EVENT HANDLERS

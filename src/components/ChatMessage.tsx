@@ -2,7 +2,7 @@
  * ChatMessage.tsx
  * 
  * Reusable message bubble component for the chat panel.
- * Displays user and assistant messages with media support.
+ * Displays user and assistant messages with multiple media support.
  */
 
 import React from 'react';
@@ -17,7 +17,7 @@ interface ChatMessageProps {
     media?: {
         type: 'image' | 'video';
         url: string;
-    };
+    }[];
     timestamp?: Date;
 }
 
@@ -37,31 +37,35 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
             <div
                 className={`max-w-[85%] rounded-2xl px-4 py-3 ${isUser
-                        ? 'bg-cyan-600 text-white rounded-br-md'
-                        : 'bg-neutral-800 text-neutral-100 rounded-bl-md'
+                    ? 'bg-cyan-600 text-white rounded-br-md'
+                    : 'bg-neutral-800 text-neutral-100 rounded-bl-md'
                     }`}
             >
-                {/* Media Attachment */}
-                {media && (
-                    <div className="mb-2">
-                        {media.type === 'image' ? (
-                            <img
-                                src={media.url}
-                                alt="Attached"
-                                className="max-w-full max-h-48 rounded-lg object-cover"
-                            />
-                        ) : (
-                            <video
-                                src={media.url}
-                                className="max-w-full max-h-48 rounded-lg object-cover"
-                                controls
-                            />
-                        )}
+                {/* Media Attachments */}
+                {media && media.length > 0 && (
+                    <div className={`mb-2 ${media.length > 1 ? 'grid grid-cols-2 gap-2' : ''}`}>
+                        {media.map((m, index) => (
+                            <div key={index} className="relative">
+                                {m.type === 'image' ? (
+                                    <img
+                                        src={m.url}
+                                        alt={`Attached ${index + 1}`}
+                                        className="w-full max-h-32 rounded-lg object-cover"
+                                    />
+                                ) : (
+                                    <video
+                                        src={m.url}
+                                        className="w-full max-h-32 rounded-lg object-cover"
+                                        controls
+                                    />
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
 
                 {/* Message Content */}
-                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                <div className="text-sm whitespace-pre-wrap leading-relaxed select-text cursor-text">
                     {content}
                 </div>
 

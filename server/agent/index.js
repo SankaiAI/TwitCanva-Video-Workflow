@@ -23,10 +23,39 @@ import { HumanMessage, AIMessage } from "@langchain/core/messages";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CHATS_DIR = path.join(__dirname, '..', '..', 'assets', 'chats');
+const IMAGES_DIR = path.join(__dirname, '..', '..', 'assets', 'images');
 
 // Ensure chats directory exists
 if (!fs.existsSync(CHATS_DIR)) {
     fs.mkdirSync(CHATS_DIR, { recursive: true });
+}
+
+/**
+ * Resolve an image URL or base64 to a base64 data URL
+ * Handles both file paths (/assets/images/...) and data URLs
+ */
+function resolveImageToBase64(imageInput) {
+    if (!imageInput) return null;
+
+    // Already a base64 data URL
+    if (imageInput.startsWith('data:')) {
+        return imageInput;
+    }
+
+    // File URL - read from disk
+    if (imageInput.startsWith('/assets/images/')) {
+        const filename = imageInput.replace('/assets/images/', '');
+        const filePath = path.join(IMAGES_DIR, filename);
+        if (fs.existsSync(filePath)) {
+            const buffer = fs.readFileSync(filePath);
+            const ext = path.extname(filename).toLowerCase();
+            const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+            return `data:${mimeType};base64,${buffer.toString('base64')}`;
+        }
+    }
+
+    // Return as-is if unknown format
+    return imageInput;
 }
 
 // ============================================================================
@@ -40,31 +69,55 @@ if (!fs.existsSync(CHATS_DIR)) {
 const sessionCache = new Map();
 
 /**
+ * Convert multimodal content to text representation for serialization
+ * This ensures context is preserved without huge base64 data
+ */
+function contentToText(content) {
+    if (typeof content === 'string') {
+        return content;
+    }
+
+    if (Array.isArray(content)) {
+        const parts = [];
+        let imageCount = 0;
+
+        for (const part of content) {
+            if (part.type === 'text') {
+                parts.push(part.text);
+            } else if (part.type === 'image_url') {
+                imageCount++;
+                parts.push(`[IMAGE ${imageCount} ATTACHED]`);
+            }
+        }
+
+        return parts.join('\n');
+    }
+
+    return JSON.stringify(content);
+}
+
+/**
  * Convert LangChain messages to serializable format
+ * Multimodal messages are converted to text with [IMAGE ATTACHED] markers
  */
 function serializeMessages(messages) {
     return messages.map(msg => ({
         role: msg._getType?.() === 'human' ? 'user' : 'assistant',
-        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-        // Store the original content type for multimodal messages
-        contentType: typeof msg.content === 'string' ? 'text' : 'multimodal',
+        content: contentToText(msg.content),
         timestamp: new Date().toISOString()
     }));
 }
 
 /**
  * Convert serialized messages back to LangChain format
+ * All messages are now stored as text (images converted to markers)
  */
 function deserializeMessages(messages) {
     return messages.map(msg => {
-        const content = msg.contentType === 'multimodal'
-            ? JSON.parse(msg.content)
-            : msg.content;
-
         if (msg.role === 'user') {
-            return new HumanMessage(content);
+            return new HumanMessage(msg.content);
         } else {
-            return new AIMessage(content);
+            return new AIMessage(msg.content);
         }
     });
 }
@@ -219,7 +272,7 @@ export function getSessionData(sessionId) {
  * Send a message to the chat agent and get a response
  * @param {string} sessionId - Session identifier
  * @param {string} content - User message content
- * @param {object} media - Optional media attachment { type, url, base64 }
+ * @param {Array} media - Optional media attachments [{ type, url, base64 }, ...]
  * @param {string} apiKey - Google AI API key
  * @returns {Promise<object>} { response: string, topic?: string }
  */
@@ -227,25 +280,35 @@ export async function sendMessage(sessionId, content, media, apiKey) {
     const session = getSession(sessionId);
     const graph = createChatGraph();
 
+    // Debug: Log session state
+    console.log(`[Chat] Session ${sessionId} has ${session.messages.length} existing messages`);
+
     // Build the user message content
     let messageContent;
-    if (media && media.base64) {
-        // Multimodal message with image/video
-        const mimeType = media.type === 'video' ? 'video/mp4' : 'image/png';
-        // Extract base64 data if it's a data URL
-        const base64Data = media.base64.includes(',')
-            ? media.base64.split(',')[1]
-            : media.base64;
+    if (media && Array.isArray(media) && media.length > 0) {
+        // Multimodal message with images/videos
+        const contentParts = [{ type: "text", text: content || "What do you see in these images?" }];
 
-        messageContent = [
-            { type: "text", text: content || "What do you see in this image?" },
-            {
+        for (const m of media) {
+            // Resolve file URLs to base64 if needed
+            const resolvedBase64 = resolveImageToBase64(m.base64);
+            if (!resolvedBase64) continue;
+
+            const mimeType = m.type === 'video' ? 'video/mp4' : 'image/png';
+            // Extract base64 data if it's a data URL
+            const base64Data = resolvedBase64.includes(',')
+                ? resolvedBase64.split(',')[1]
+                : resolvedBase64;
+
+            contentParts.push({
                 type: "image_url",
                 image_url: {
                     url: `data:${mimeType};base64,${base64Data}`,
                 },
-            },
-        ];
+            });
+        }
+
+        messageContent = contentParts;
     } else {
         messageContent = content;
     }
@@ -253,6 +316,8 @@ export async function sendMessage(sessionId, content, media, apiKey) {
     // Add user message to session
     const userMessage = new HumanMessage(messageContent);
     session.messages.push(userMessage);
+
+    console.log(`[Chat] Sending ${session.messages.length} messages to LLM`);
 
     // Invoke the graph
     const result = await graph.invoke(
@@ -263,6 +328,15 @@ export async function sendMessage(sessionId, content, media, apiKey) {
     // Extract AI response from result
     const aiResponse = result.messages[result.messages.length - 1];
     session.messages.push(aiResponse);
+
+    // Convert the multimodal user message to text for future context
+    // This ensures the AI remembers what images contained in subsequent turns
+    if (typeof messageContent !== 'string') {
+        const textVersion = contentToText(messageContent);
+        // Replace the last user message with text version
+        const userMsgIndex = session.messages.length - 2;
+        session.messages[userMsgIndex] = new HumanMessage(textVersion);
+    }
 
     // Generate topic if this is the first exchange (2 messages: user + AI)
     let topic = session.topic;

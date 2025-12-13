@@ -5,7 +5,7 @@
  * Handles result display (image/video) and placeholder states.
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Loader2, Maximize2, ImageIcon as ImageIcon, Film, Upload, Pencil, Video, GripVertical } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 
@@ -44,6 +44,41 @@ export const NodeContent: React.FC<NodeContentProps> = ({
     onUpdate
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Local state for text node textarea to prevent lag
+    const [localPrompt, setLocalPrompt] = useState(data.prompt || '');
+    const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
+
+    // Sync local state ONLY when data.prompt changes externally (not from our own update)
+    useEffect(() => {
+        if (data.prompt !== lastSentPromptRef.current) {
+            setLocalPrompt(data.prompt || '');
+            lastSentPromptRef.current = data.prompt;
+        }
+    }, [data.prompt]);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const handleTextChange = (value: string) => {
+        setLocalPrompt(value); // Update local state immediately
+        lastSentPromptRef.current = value; // Track that we're about to send this
+
+        // Debounce parent update
+        if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
+        }
+        updateTimeoutRef.current = setTimeout(() => {
+            onUpdate?.(data.id, { prompt: value });
+        }, 150);
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -130,9 +165,18 @@ export const NodeContent: React.FC<NodeContentProps> = ({
                         /* Editing Mode - Text Area */
                         <div className="p-4">
                             <textarea
-                                value={data.prompt || ''}
-                                onChange={(e) => onUpdate?.(data.id, { prompt: e.target.value })}
+                                value={localPrompt}
+                                onChange={(e) => handleTextChange(e.target.value)}
                                 onPointerDown={(e) => e.stopPropagation()}
+                                onBlur={() => {
+                                    // Ensure final value is saved on blur
+                                    if (updateTimeoutRef.current) {
+                                        clearTimeout(updateTimeoutRef.current);
+                                    }
+                                    if (localPrompt !== data.prompt) {
+                                        onUpdate?.(data.id, { prompt: localPrompt });
+                                    }
+                                }}
                                 placeholder="Write your text content here..."
                                 className="w-full min-h-[150px] bg-transparent text-white text-sm resize-none outline-none placeholder:text-neutral-600"
                                 autoFocus

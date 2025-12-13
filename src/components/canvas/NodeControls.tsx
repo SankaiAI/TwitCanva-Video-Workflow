@@ -6,7 +6,7 @@
  * For Video nodes: includes Advanced Settings for frame-to-frame mode.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 
@@ -29,7 +29,7 @@ const VIDEO_RESOLUTIONS = [
     "Auto", "1080p", "512p"
 ];
 
-export const NodeControls: React.FC<NodeControlsProps> = ({
+const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     data,
     inputUrl,
     isLoading,
@@ -42,7 +42,10 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [showSizeDropdown, setShowSizeDropdown] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [localPrompt, setLocalPrompt] = useState(data.prompt || '');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -53,6 +56,37 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Sync local prompt with data.prompt ONLY when it changes externally (not from our own update)
+    useEffect(() => {
+        if (data.prompt !== lastSentPromptRef.current) {
+            setLocalPrompt(data.prompt || '');
+            lastSentPromptRef.current = data.prompt;
+        }
+    }, [data.prompt]);
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (updateTimeoutRef.current) {
+                clearTimeout(updateTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // Handle prompt change with debounce
+    const handlePromptChange = (value: string) => {
+        setLocalPrompt(value); // Update local state immediately for responsive typing
+        lastSentPromptRef.current = value; // Track that we're about to send this
+
+        // Debounce the parent update
+        if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
+        }
+        updateTimeoutRef.current = setTimeout(() => {
+            onUpdate(data.id, { prompt: value });
+        }, 300); // 300ms debounce - increased for smoother typing
+    };
 
     const handleSizeSelect = (value: string) => {
         if (data.type === NodeType.VIDEO) {
@@ -116,9 +150,17 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
                 className="w-full bg-transparent text-sm text-white placeholder-neutral-600 outline-none resize-none mb-3 font-light"
                 placeholder={data.type === NodeType.VIDEO && inputUrl ? "Describe how to animate this frame..." : "Describe what you want to generate..."}
                 rows={2}
-                value={data.prompt}
-                onChange={(e) => onUpdate(data.id, { prompt: e.target.value })}
-            // Always allow editing, even if loading or success, to support re-generation
+                value={localPrompt}
+                onChange={(e) => handlePromptChange(e.target.value)}
+                onBlur={() => {
+                    // Ensure final value is saved on blur
+                    if (updateTimeoutRef.current) {
+                        clearTimeout(updateTimeoutRef.current);
+                    }
+                    if (localPrompt !== data.prompt) {
+                        onUpdate(data.id, { prompt: localPrompt });
+                    }
+                }}
             />
 
             {data.errorMessage && (
@@ -215,8 +257,8 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
                                 <button
                                     onClick={() => handleVideoModeChange('standard')}
                                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${data.videoMode !== 'frame-to-frame'
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
                                         }`}
                                 >
                                     <Film size={12} />
@@ -226,10 +268,10 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
                                     onClick={() => handleVideoModeChange('frame-to-frame')}
                                     disabled={!hasConnectedImages}
                                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${data.videoMode === 'frame-to-frame'
-                                            ? 'bg-cyan-600 text-white'
-                                            : hasConnectedImages
-                                                ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-                                                : 'bg-neutral-800/50 text-neutral-600 cursor-not-allowed'
+                                        ? 'bg-cyan-600 text-white'
+                                        : hasConnectedImages
+                                            ? 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                                            : 'bg-neutral-800/50 text-neutral-600 cursor-not-allowed'
                                         }`}
                                     title={!hasConnectedImages ? 'Connect image nodes first' : ''}
                                 >
@@ -276,8 +318,8 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
                                                 />
                                                 <div className="flex-1">
                                                     <span className={`text-xs font-medium px-2 py-0.5 rounded ${input.order === 'start'
-                                                            ? 'bg-green-600/30 text-green-400'
-                                                            : 'bg-orange-600/30 text-orange-400'
+                                                        ? 'bg-green-600/30 text-green-400'
+                                                        : 'bg-orange-600/30 text-orange-400'
                                                         }`}>
                                                         {input.order === 'start' ? 'START' : 'END'}
                                                     </span>
@@ -300,3 +342,6 @@ export const NodeControls: React.FC<NodeControlsProps> = ({
         </div>
     );
 };
+
+// Memoize to prevent re-renders when parent state changes
+export const NodeControls = memo(NodeControlsComponent);

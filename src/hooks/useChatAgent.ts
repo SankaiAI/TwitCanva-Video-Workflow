@@ -18,7 +18,7 @@ export interface ChatMessage {
     media?: {
         type: 'image' | 'video';
         url: string;
-    };
+    }[]; // Array of media attachments
     timestamp: Date;
 }
 
@@ -38,7 +38,7 @@ interface UseChatAgentReturn {
     error: string | null;
     sessions: ChatSession[];
     isLoadingSessions: boolean;
-    sendMessage: (content: string, media?: { type: 'image' | 'video'; url: string; base64?: string }) => Promise<void>;
+    sendMessage: (content: string, media?: { type: 'image' | 'video'; url: string; base64?: string }[]) => Promise<void>;
     startNewChat: () => void;
     loadSession: (sessionId: string) => Promise<void>;
     deleteSession: (sessionId: string) => Promise<void>;
@@ -176,7 +176,7 @@ export function useChatAgent(): UseChatAgentReturn {
      */
     const sendMessage = useCallback(async (
         content: string,
-        media?: { type: 'image' | 'video'; url: string; base64?: string }
+        media?: { type: 'image' | 'video'; url: string; base64?: string }[]
     ) => {
         const currentSessionId = ensureSession();
         setError(null);
@@ -187,7 +187,7 @@ export function useChatAgent(): UseChatAgentReturn {
             id: generateMessageId(),
             role: 'user',
             content,
-            media: media ? { type: media.type, url: media.url } : undefined,
+            media: media ? media.map(m => ({ type: m.type, url: m.url })) : undefined,
             timestamp: new Date(),
         };
         setMessages(prev => [...prev, userMessage]);
@@ -199,10 +199,10 @@ export function useChatAgent(): UseChatAgentReturn {
                 body: JSON.stringify({
                     sessionId: currentSessionId,
                     message: content,
-                    media: media ? {
-                        type: media.type,
-                        base64: media.base64 || media.url, // Use base64 if available, otherwise URL
-                    } : undefined,
+                    media: media ? media.map(m => ({
+                        type: m.type,
+                        base64: m.base64 || m.url, // Use base64 if available, otherwise URL
+                    })) : undefined,
                 }),
             });
 

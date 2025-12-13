@@ -31,7 +31,7 @@ app.use('/assets/images', express.static(IMAGES_DIR));
 app.use('/assets/videos', express.static(VIDEOS_DIR));
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -42,6 +42,34 @@ if (!API_KEY) {
 const getClient = () => {
     return new GoogleGenAI({ apiKey: API_KEY || '' });
 };
+
+/**
+ * Resolve an image URL or base64 to a base64 data URL
+ * Handles both file paths (/assets/images/...) and data URLs
+ */
+function resolveImageToBase64(imageInput) {
+    if (!imageInput) return null;
+
+    // Already a base64 data URL
+    if (imageInput.startsWith('data:')) {
+        return imageInput;
+    }
+
+    // File URL - read from disk
+    if (imageInput.startsWith('/assets/images/')) {
+        const filename = imageInput.replace('/assets/images/', '');
+        const filePath = path.join(IMAGES_DIR, filename);
+        if (fs.existsSync(filePath)) {
+            const buffer = fs.readFileSync(filePath);
+            const ext = path.extname(filename).toLowerCase();
+            const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+            return `data:${mimeType};base64,${buffer.toString('base64')}`;
+        }
+    }
+
+    // Return as-is if unknown format
+    return imageInput;
+}
 
 // --- Helper Functions ---
 
@@ -165,7 +193,7 @@ app.put('/api/workflows/:id/cover', async (req, res) => {
 
 app.post('/api/generate-image', async (req, res) => {
     try {
-        const { prompt, aspectRatio, resolution, imageBase64 } = req.body;
+        const { prompt, aspectRatio, resolution, imageBase64: rawImageBase64 } = req.body;
 
         if (!API_KEY) {
             return res.status(500).json({ error: "Server missing API Key config" });
@@ -178,8 +206,10 @@ app.post('/api/generate-image', async (req, res) => {
 
         const parts = [];
 
-        if (imageBase64) {
-            const images = Array.isArray(imageBase64) ? imageBase64 : [imageBase64];
+        if (rawImageBase64) {
+            const rawImages = Array.isArray(rawImageBase64) ? rawImageBase64 : [rawImageBase64];
+            // Resolve each image to base64 (handles file URLs)
+            const images = rawImages.map(img => resolveImageToBase64(img)).filter(Boolean);
 
             for (const img of images) {
                 const match = img.match(/^data:(image\/\w+);base64,/);
@@ -211,7 +241,16 @@ app.post('/api/generate-image', async (req, res) => {
         if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
             for (const part of candidates[0].content.parts) {
                 if (part.inlineData && part.inlineData.data) {
-                    return res.json({ resultUrl: `data:image/png;base64,${part.inlineData.data}` });
+                    // Save image to file instead of returning base64
+                    const imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    const imagePath = path.join(IMAGES_DIR, `${imageId}.png`);
+                    const imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+                    fs.writeFileSync(imagePath, imageBuffer);
+
+                    // Return URL to the saved file
+                    const imageUrl = `/assets/images/${imageId}.png`;
+                    console.log(`Image saved: ${imageUrl}`);
+                    return res.json({ resultUrl: imageUrl });
                 }
             }
         }
@@ -226,7 +265,11 @@ app.post('/api/generate-image', async (req, res) => {
 
 app.post('/api/generate-video', async (req, res) => {
     try {
-        const { prompt, imageBase64, lastFrameBase64, aspectRatio, resolution } = req.body;
+        const { prompt, imageBase64: rawImageBase64, lastFrameBase64: rawLastFrameBase64, aspectRatio, resolution } = req.body;
+
+        // Resolve file URLs to base64 if needed
+        const imageBase64 = resolveImageToBase64(rawImageBase64);
+        const lastFrameBase64 = resolveImageToBase64(rawLastFrameBase64);
 
         if (!API_KEY) {
             return res.status(500).json({ error: "Server missing API Key config" });
@@ -307,9 +350,16 @@ app.post('/api/generate-video', async (req, res) => {
         const videoRes = await fetch(`${downloadLink}&key=${API_KEY}`);
         const arrayBuffer = await videoRes.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const base64Video = buffer.toString('base64');
 
-        return res.json({ resultUrl: `data:video/mp4;base64,${base64Video}` });
+        // Save video to file instead of returning base64
+        const videoId = `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const videoPath = path.join(VIDEOS_DIR, `${videoId}.mp4`);
+        fs.writeFileSync(videoPath, buffer);
+
+        // Return URL to the saved file
+        const videoUrl = `/assets/videos/${videoId}.mp4`;
+        console.log(`Video saved: ${videoUrl}`);
+        return res.json({ resultUrl: videoUrl });
 
     } catch (error) {
         console.error("Server Video Gen Error:", error);

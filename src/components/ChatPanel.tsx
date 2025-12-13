@@ -44,7 +44,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     // --- State ---
     const [message, setMessage] = useState('');
     const [showTip, setShowTip] = useState(true);
-    const [attachedMedia, setAttachedMedia] = useState<AttachedMedia | null>(null);
+    const [attachedMedia, setAttachedMedia] = useState<AttachedMedia[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
 
@@ -105,7 +105,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             try {
                 const { nodeId, url, type } = JSON.parse(nodeData);
                 if (url && (type === 'image' || type === 'video')) {
-                    setAttachedMedia({ type, url, nodeId, base64: url });
+                    // Add to attachments if not already present
+                    setAttachedMedia(prev => {
+                        if (prev.some(m => m.nodeId === nodeId)) return prev;
+                        return [...prev, { type, url, nodeId, base64: url }];
+                    });
                 }
             } catch (err) {
                 console.error('Failed to parse dropped node data:', err);
@@ -113,19 +117,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         }
     };
 
-    const removeAttachment = () => {
-        setAttachedMedia(null);
+    const removeAttachment = (nodeId: string) => {
+        setAttachedMedia(prev => prev.filter(m => m.nodeId !== nodeId));
     };
 
     const handleSend = async () => {
-        if ((!message.trim() && !attachedMedia) || isLoading) return;
+        if ((!message.trim() && attachedMedia.length === 0) || isLoading) return;
 
         const currentMessage = message;
         const currentMedia = attachedMedia;
 
         // Clear input immediately for better UX
         setMessage('');
-        setAttachedMedia(null);
+        setAttachedMedia([]);
 
         // Reset textarea height
         if (textareaRef.current) {
@@ -139,18 +143,18 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
         await sendMessage(
             currentMessage,
-            currentMedia ? {
-                type: currentMedia.type,
-                url: currentMedia.url,
-                base64: currentMedia.base64,
-            } : undefined
+            currentMedia.length > 0 ? currentMedia.map(m => ({
+                type: m.type,
+                url: m.url,
+                base64: m.base64,
+            })) : undefined
         );
     };
 
     const handleNewChat = () => {
         startNewChat();
         setMessage('');
-        setAttachedMedia(null);
+        setAttachedMedia([]);
         setShowTip(true);
         setShowHistory(false);
     };
@@ -386,26 +390,30 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             <div className="p-4 border-t border-neutral-800">
                 <div className="bg-neutral-800 rounded-2xl p-3">
                     {/* Attached Media Preview */}
-                    {attachedMedia && (
-                        <div className="relative inline-block mb-3">
-                            {attachedMedia.type === 'image' ? (
-                                <img
-                                    src={attachedMedia.url}
-                                    alt="Attached"
-                                    className="w-16 h-16 object-cover rounded-lg"
-                                />
-                            ) : (
-                                <video
-                                    src={attachedMedia.url}
-                                    className="w-16 h-16 object-cover rounded-lg"
-                                />
-                            )}
-                            <button
-                                onClick={removeAttachment}
-                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-400 rounded-full flex items-center justify-center text-white text-xs"
-                            >
-                                ×
-                            </button>
+                    {attachedMedia.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {attachedMedia.map((media) => (
+                                <div key={media.nodeId} className="relative">
+                                    {media.type === 'image' ? (
+                                        <img
+                                            src={media.url}
+                                            alt="Attached"
+                                            className="w-14 h-14 object-cover rounded-lg"
+                                        />
+                                    ) : (
+                                        <video
+                                            src={media.url}
+                                            className="w-14 h-14 object-cover rounded-lg"
+                                        />
+                                    )}
+                                    <button
+                                        onClick={() => removeAttachment(media.nodeId)}
+                                        className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 hover:bg-red-400 rounded-full flex items-center justify-center text-white text-[10px]"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     )}
 
