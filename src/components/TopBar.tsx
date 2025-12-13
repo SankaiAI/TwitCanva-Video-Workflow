@@ -92,7 +92,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             >
                 {/* Left: Logo & Title */}
                 <div className="flex items-center gap-3 pointer-events-auto">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600"></div>
+                    <img src="/logo.png" alt="TwitCanva Logo" className="w-8 h-8 rounded-lg object-contain bg-black/20" />
                     {isEditingTitle ? (
                         <input
                             ref={canvasTitleInputRef as React.RefObject<HTMLInputElement>}
