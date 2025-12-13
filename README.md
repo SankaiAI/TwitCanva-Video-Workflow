@@ -23,10 +23,14 @@ A modern, AI-powered canvas application for generating and manipulating images a
 ## 🎥 Showcase
 
 ### App Overview
-<video src="public/TwitCanva-Workflow-Recording.mp4" controls width="100%"></video>
+[🎥 Watch workflow recording](public/TwitCanva-Workflow-Recording.mp4)
 
 ### Output Example
-<video src="public/Result-example1.mp4" controls width="100%"></video>
+Download all the generated videos and use video editting tool like CapCut to create a final video. Check result below.
+
+[🎥 Watch result example](public/Result-example1.mp4)
+
+This is not the perfect one, but it is a good start. Give me a try, and let me know how I can improve it. Thank you!
 
 ## 🚀 Getting Started
 
