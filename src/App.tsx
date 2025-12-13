@@ -723,6 +723,69 @@ export default function App() {
   // RENDER
   // ============================================================================
 
+  const handleContextUpload = (file: File) => {
+    if (!file) return;
+
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isVideo && !isImage) return;
+
+    // Check file size (server limit 100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      alert("File is too large. Maximum size is 100MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64Data = e.target?.result as string;
+
+      try {
+        const type = isVideo ? 'videos' : 'images';
+        const response = await fetch(`/api/assets/${type}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: base64Data,
+            prompt: file.name
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Upload failed');
+        }
+
+        const responseData = await response.json();
+        const resultUrl = responseData.url;
+
+        // Convert screen/menu coordinates to canvas coordinates
+        const canvasX = (contextMenu.x - viewport.x) / viewport.zoom;
+        const canvasY = (contextMenu.y - viewport.y) / viewport.zoom;
+
+        const newNode: NodeData = {
+          id: crypto.randomUUID(),
+          type: isVideo ? NodeType.VIDEO : NodeType.IMAGE,
+          x: canvasX,
+          y: canvasY,
+          prompt: file.name, // Use filename as initial prompt
+          status: NodeStatus.SUCCESS,
+          resultUrl: resultUrl, // Use the server URL
+          model: 'Upload',
+          aspectRatio: 'Auto',
+          resolution: 'Auto',
+        };
+
+        setNodes(prev => [...prev, newNode]);
+
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("Failed to upload file to server.");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="w-screen h-screen bg-[#050505] text-white overflow-hidden select-none font-sans">
       <Toolbar
@@ -943,6 +1006,7 @@ export default function App() {
         onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))
         }
         onSelectType={handleContextMenuSelect}
+        onUpload={handleContextUpload}
       />
 
       {/* Zoom Slider */}

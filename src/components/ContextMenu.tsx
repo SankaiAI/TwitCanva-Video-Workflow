@@ -21,10 +21,12 @@ interface ContextMenuProps {
   state: ContextMenuState;
   onClose: () => void;
   onSelectType: (type: NodeType | 'DELETE') => void;
+  onUpload: (file: File) => void;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onSelectType }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onSelectType, onUpload }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<'main' | 'add-nodes'>('main');
 
   useEffect(() => {
@@ -46,6 +48,23 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onSele
     }
   }, [state]);
 
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onUpload(file);
+      onClose();
+    }
+    // Reset value so same file can be selected again
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
 
   if (!state.isOpen) return null;
 
@@ -79,11 +98,18 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ state, onClose, onSele
         style={{ position: 'absolute', left: state.x, top: state.y, zIndex: 1000 }}
         className="w-64 bg-[#1e1e1e] border border-neutral-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100"
       >
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*,video/*"
+          onChange={handleFileChange}
+        />
         <div className="p-1.5 flex flex-col gap-0.5">
           <MenuItem
             icon={<Upload size={16} />}
             label="Upload"
-            onClick={() => { }} // Placeholder
+            onClick={handleUploadClick}
           />
           <MenuItem
             icon={<Layers size={16} />}
