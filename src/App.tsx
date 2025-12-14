@@ -13,7 +13,7 @@ import { CanvasNode } from './components/canvas/CanvasNode';
 import { ConnectionsLayer } from './components/canvas/ConnectionsLayer';
 import { ContextMenu } from './components/ContextMenu';
 import { ContextMenuState, NodeData, NodeStatus, NodeType } from './types';
-import { generateImage, generateVideo } from './services/geminiService';
+import { generateImage, generateVideo } from './services/generationService';
 import { useCanvasNavigation } from './hooks/useCanvasNavigation';
 import { useNodeManagement } from './hooks/useNodeManagement';
 import { useConnectionDragging } from './hooks/useConnectionDragging';

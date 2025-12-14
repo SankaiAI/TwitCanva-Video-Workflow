@@ -6,7 +6,7 @@
  */
 
 import { NodeData, NodeType, NodeStatus } from '../types';
-import { generateImage, generateVideo } from '../services/geminiService';
+import { generateImage, generateVideo } from '../services/generationService';
 import { extractVideoLastFrame } from '../utils/videoHelpers';
 
 interface UseGenerationProps {

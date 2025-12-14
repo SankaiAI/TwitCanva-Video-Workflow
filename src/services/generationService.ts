@@ -1,5 +1,11 @@
-// Note: The GoogleGenAI import is removed because we now proxy requests to the backend.
-// We keep the types for consistency in the frontend.
+/**
+ * generationService.ts
+ * 
+ * Frontend service layer for AI content generation.
+ * Proxies requests to backend API which handles multiple providers:
+ * - Image: Gemini Pro, Kling AI
+ * - Video: Veo 3.1, Kling AI
+ */
 
 export interface GenerateImageParams {
   prompt: string;
@@ -41,7 +47,7 @@ export const generateImage = async (params: GenerateImageParams): Promise<string
     return data.resultUrl;
 
   } catch (error) {
-    console.error("Gemini Image Gen Error:", error);
+    console.error("Image Generation Error:", error);
     throw error;
   }
 };
@@ -69,7 +75,7 @@ export const generateVideo = async (params: GenerateVideoParams): Promise<string
     return data.resultUrl;
 
   } catch (error) {
-    console.error("Gemini Video Gen Error:", error);
+    console.error("Video Generation Error:", error);
     throw error;
   }
 };
