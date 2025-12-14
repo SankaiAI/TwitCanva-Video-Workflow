@@ -344,6 +344,38 @@ export default function App() {
     }
   }, [setNodes, setSelectedNodeIds]);
 
+  // Handle copy action
+  const handleCopy = React.useCallback(() => {
+    if (selectedNodeIds.length > 0) {
+      const selectedNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
+      clipboardRef.current = JSON.parse(JSON.stringify(selectedNodes)); // Deep copy
+      console.log(`Copied ${selectedNodes.length} node(s)`);
+    }
+  }, [nodes, selectedNodeIds]);
+
+  // Handle duplicate action
+  const handleDuplicate = React.useCallback(() => {
+    if (selectedNodeIds.length > 0) {
+      // 1. Copy
+      const selectedNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
+      const nodesToDuplicate = JSON.parse(JSON.stringify(selectedNodes));
+
+      // 2. Paste immediately with offset
+      const offset = 20;
+      const newNodes: NodeData[] = nodesToDuplicate.map((node: NodeData) => ({
+        ...node,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        x: node.x + offset,
+        y: node.y + offset,
+        parentIds: undefined,
+        groupId: undefined
+      }));
+
+      setNodes(prev => [...prev, ...newNodes]);
+      setSelectedNodeIds(newNodes.map(n => n.id));
+    }
+  }, [nodes, selectedNodeIds, setNodes, setSelectedNodeIds]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeTag = document.activeElement?.tagName.toLowerCase();
@@ -365,11 +397,7 @@ export default function App() {
 
       // Copy: Ctrl+C
       if (e.ctrlKey && e.key === 'c') {
-        if (selectedNodeIds.length > 0) {
-          const selectedNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
-          clipboardRef.current = JSON.parse(JSON.stringify(selectedNodes)); // Deep copy
-          console.log(`Copied ${selectedNodes.length} node(s)`);
-        }
+        handleCopy();
         return;
       }
 
@@ -395,7 +423,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeIds, selectedConnection, deleteNodes, deleteSelectedConnection, clearSelection, clearSelectionBox, undo, redo, nodes, setNodes, setSelectedNodeIds, handlePaste]);
+  }, [selectedNodeIds, selectedConnection, deleteNodes, deleteSelectedConnection, clearSelection, clearSelectionBox, undo, redo, nodes, setNodes, setSelectedNodeIds, handlePaste, handleCopy]);
 
 
   // Cleanup invalid groups (groups with less than 2 nodes)
@@ -1015,6 +1043,8 @@ export default function App() {
         onUndo={undo}
         onRedo={redo}
         onPaste={handlePaste}
+        onCopy={handleCopy}
+        onDuplicate={handleDuplicate}
         canUndo={canUndo}
         canRedo={canRedo}
       />

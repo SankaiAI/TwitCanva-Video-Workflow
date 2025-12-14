@@ -12,6 +12,8 @@ import {
   Undo2,
   Redo2,
   Clipboard,
+  Copy,
+  Files,
   Layers,
   ChevronRight
 } from 'lucide-react';
@@ -25,6 +27,8 @@ interface ContextMenuProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onPaste?: () => void;
+  onCopy?: () => void;
+  onDuplicate?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
 }
@@ -37,6 +41,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onUndo,
   onRedo,
   onPaste,
+  onCopy,
+  onDuplicate,
   canUndo = false,
   canRedo = false
 }) => {
@@ -113,10 +119,50 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         style={{ position: 'absolute', left: state.x, top: state.y, zIndex: 1000 }}
         className="w-48 bg-[#1e1e1e] border border-neutral-800 rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-100"
       >
-        <div className="p-1">
+        <div className="p-1.5 flex flex-col gap-0.5">
           <MenuItem
-            icon={<Trash2 size={16} className="text-red-400" />}
+            icon={<ImageIcon size={16} />}
+            label="Create Asset"
+            onClick={() => { }} // Logic to be implemented or connected to generate
+            active={false}
+          />
+          <div className="my-1 border-t border-neutral-800 mx-1" />
+
+          <MenuItem
+            icon={<Copy size={16} />}
+            label="Copy"
+            shortcut="CtrlC"
+            onClick={() => {
+              if (onCopy) {
+                onCopy();
+                onClose();
+              }
+            }}
+          />
+          <MenuItem
+            icon={<Clipboard size={16} />}
+            label="Paste"
+            shortcut="CtrlV"
+            onClick={handlePaste}
+            disabled={true} // Disabled in screenshot
+          />
+          <MenuItem
+            icon={<Files size={16} />}
+            label="Duplicate"
+            onClick={() => {
+              if (onDuplicate) {
+                onDuplicate();
+                onClose();
+              }
+            }}
+          />
+
+          <div className="my-1 border-t border-neutral-800 mx-1" />
+
+          <MenuItem
+            icon={<Trash2 size={16} />} // Screenshot has text "Delete", icon might be different
             label="Delete"
+            shortcut="⌫,del"
             onClick={() => onSelectType('DELETE')}
           />
         </div>
