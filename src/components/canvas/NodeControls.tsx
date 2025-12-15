@@ -43,7 +43,7 @@ const VIDEO_MODELS = [
 
 // Image model versions with metadata
 const IMAGE_MODELS = [
-    { id: 'gemini-pro', name: 'Gemini Pro', provider: 'google' },
+    { id: 'gemini-pro', name: 'Nano Banana Pro', provider: 'google' },
     { id: 'kling-v1', name: 'Kling V1', provider: 'kling' },
     { id: 'kling-v1-5', name: 'Kling V1.5', provider: 'kling' },
     { id: 'kling-v2', name: 'Kling V2', provider: 'kling' },
@@ -234,11 +234,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                 onClick={() => setShowModelDropdown(!showModelDropdown)}
                                 className="flex items-center gap-1.5 text-xs text-neutral-300 hover:bg-neutral-800 px-2 py-1.5 rounded-lg transition-colors"
                             >
-                                {currentVideoModel.provider === 'google' ? (
-                                    <Banana size={12} className="text-yellow-400" />
-                                ) : (
-                                    <Film size={12} className="text-cyan-400" />
-                                )}
+                                <Film size={12} className="text-cyan-400" />
                                 <span className="font-medium">{currentVideoModel.name}</span>
                                 <ChevronDown size={12} className="ml-0.5 opacity-50" />
                             </button>
@@ -258,7 +254,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                                 }`}
                                         >
                                             <span className="flex items-center gap-2">
-                                                <Banana size={12} className="text-yellow-400" />
+                                                <Film size={12} className="text-cyan-400" />
                                                 {model.name}
                                             </span>
                                             {currentVideoModel.id === model.id && <Check size={12} />}

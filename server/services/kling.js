@@ -299,6 +299,141 @@ async function pollKlingImageTask(taskId, token, maxWaitMs = 120000) {
 }
 
 /**
+ * Poll Kling multi-image-to-image task status until complete
+ */
+async function pollKlingMultiImageTask(taskId, token, maxWaitMs = 120000) {
+    const startTime = Date.now();
+    const pollInterval = 3000; // 3 seconds for images
+
+    while (Date.now() - startTime < maxWaitMs) {
+        const response = await fetch(`${KLING_BASE_URL}/v1/images/multi-image2image/${taskId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.code !== 0) {
+            throw new Error(`Kling API error: ${result.message || 'Unknown error'}`);
+        }
+
+        const status = result.data?.task_status;
+        console.log(`Kling multi-image task ${taskId} status: ${status}`);
+
+        if (status === 'succeed') {
+            const imageUrl = result.data?.task_result?.images?.[0]?.url;
+            if (!imageUrl) {
+                throw new Error('No image URL in successful response');
+            }
+            return imageUrl;
+        } else if (status === 'failed') {
+            throw new Error(`Kling multi-image generation failed: ${result.data?.task_status_msg || 'Unknown error'}`);
+        }
+
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error('Kling multi-image generation timed out');
+}
+
+/**
+ * Generate image using Kling AI Multi-Image to Image API
+ * Combines multiple subject images into one generated image
+ * 
+ * @param prompt - Text prompt describing the desired output
+ * @param subjectImages - Array of base64 images to use as subjects
+ * @param sceneImage - Optional scene reference image (base64)
+ * @param styleImage - Optional style reference image (base64)
+ * @param modelId - Model ID (kling-v2 or kling-v2-1)
+ * @param aspectRatio - Output aspect ratio
+ */
+export async function generateKlingMultiImage({
+    prompt,
+    subjectImages,
+    sceneImage,
+    styleImage,
+    modelId,
+    aspectRatio,
+    accessKey,
+    secretKey
+}) {
+    const token = generateKlingJWT(accessKey, secretKey);
+
+    // Multi-image-to-image only supports kling-v2 and kling-v2-1
+    const modelName = modelId === 'kling-v2-1' ? 'kling-v2-1' : 'kling-v2';
+
+    // Map aspect ratio
+    const ratioMapping = {
+        'Auto': '16:9',
+        '1:1': '1:1',
+        '16:9': '16:9',
+        '9:16': '9:16',
+        '4:3': '4:3',
+        '3:4': '3:4',
+        '3:2': '3:2',
+        '2:3': '2:3',
+        '21:9': '21:9'
+    };
+    const mappedRatio = ratioMapping[aspectRatio] || '16:9';
+
+    // Prepare subject_image_list (required - up to 4 images)
+    const subjectImageList = subjectImages.slice(0, 4).map(img => ({
+        subject_image: extractRawBase64(img)
+    }));
+
+    // Prepare request body
+    const body = {
+        model_name: modelName,
+        prompt: prompt || '',
+        aspect_ratio: mappedRatio,
+        n: 1,
+        subject_image_list: subjectImageList
+    };
+
+    // Add optional scene image
+    if (sceneImage) {
+        body.scene_image = extractRawBase64(sceneImage);
+    }
+
+    // Add optional style image
+    if (styleImage) {
+        body.style_image = extractRawBase64(styleImage);
+    }
+
+    console.log(`Kling Multi-Image Gen: Using model ${modelName}, ${subjectImages.length} subjects, ratio: ${mappedRatio}`);
+
+    // Create task
+    const response = await fetch(`${KLING_BASE_URL}/v1/images/multi-image2image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+    });
+
+    const result = await response.json();
+
+    if (result.code !== 0) {
+        throw new Error(`Kling API error: ${result.message || 'Failed to create multi-image task'}`);
+    }
+
+    const taskId = result.data?.task_id;
+    if (!taskId) {
+        throw new Error('No task ID returned from Kling API');
+    }
+
+    console.log(`Kling multi-image task created: ${taskId}`);
+
+    // Poll for completion
+    return await pollKlingMultiImageTask(taskId, token);
+}
+
+/**
  * Generate image using Kling AI Image Generation API
  */
 export async function generateKlingImage({ prompt, imageBase64, modelId, aspectRatio, accessKey, secretKey }) {

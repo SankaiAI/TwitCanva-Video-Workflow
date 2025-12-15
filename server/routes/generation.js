@@ -8,7 +8,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import { generateKlingVideo, generateKlingImage } from '../services/kling.js';
+import { generateKlingVideo, generateKlingImage, generateKlingMultiImage } from '../services/kling.js';
 import { generateGeminiImage, generateVeoVideo } from '../services/gemini.js';
 import { resolveImageToBase64, saveBufferToFile } from '../utils/imageHelpers.js';
 
@@ -46,14 +46,30 @@ router.post('/generate-image', async (req, res) => {
                 resolvedImages = rawImages.map(img => resolveImageToBase64(img)).filter(Boolean);
             }
 
-            const klingImageUrl = await generateKlingImage({
-                prompt,
-                imageBase64: resolvedImages,
-                modelId: imageModel,
-                aspectRatio,
-                accessKey: KLING_ACCESS_KEY,
-                secretKey: KLING_SECRET_KEY
-            });
+            let klingImageUrl;
+
+            // Use Multi-Image API when multiple images are provided
+            if (resolvedImages && resolvedImages.length > 1) {
+                console.log(`Using Kling Multi-Image API with ${resolvedImages.length} subject images`);
+                klingImageUrl = await generateKlingMultiImage({
+                    prompt,
+                    subjectImages: resolvedImages,
+                    modelId: imageModel,
+                    aspectRatio,
+                    accessKey: KLING_ACCESS_KEY,
+                    secretKey: KLING_SECRET_KEY
+                });
+            } else {
+                // Standard single image or text-to-image generation
+                klingImageUrl = await generateKlingImage({
+                    prompt,
+                    imageBase64: resolvedImages,
+                    modelId: imageModel,
+                    aspectRatio,
+                    accessKey: KLING_ACCESS_KEY,
+                    secretKey: KLING_SECRET_KEY
+                });
+            }
 
             // Download from Kling's URL
             const imageResponse = await fetch(klingImageUrl);
