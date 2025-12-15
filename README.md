@@ -13,15 +13,19 @@ A modern, AI-powered canvas application for generating and manipulating images a
 ## ✨ Features
 
 - **🎨 Visual Canvas Interface** - Drag-and-drop node-based workflow
-- **🤖 AI Image Generation** - Powered by Google's Gemini 3 Pro
-- **🎬 AI Video Generation** - Create videos from images using Veo 3.1
+- **🤖 Multi-Model AI Generation** - Gemini Pro, Kling V1-V2.5 for images
+- **🎬 Multi-Model Video Generation** - Veo 3.1, Kling V1-V2.5 for videos
+- **🖼️ Image-to-Image** - Use reference images for generation
+- **📽️ Frame-to-Frame Video** - Animate between start and end frames
+- **🔗 Smart Node Connections** - Type-aware validation (IMAGE→VIDEO, TEXT→IMAGE, etc.)
 - **💬 AI Chat Assistant** - Built-in chat with LangGraph agent
-- **🔗 Node Connections** - Chain operations with drag-to-connect
-- **💾 Workflow Management** - Save, load, and manage your workflows
+- **📚 Asset Library** - Save and reuse generated assets
+- **💾 Workflow Management** - Save, load, and share workflows
 - **⚡ Real-time Updates** - Hot module replacement for instant feedback
 - **🎯 Aspect Ratio Control** - Multiple preset ratios for images
 - **📹 Resolution Options** - 720p and 1080p for videos
 - **🔒 Secure API** - Backend proxy keeps API keys safe
+- **🔄 Auto-Model Selection** - Filters models based on input compatibility
 
 ## 🎥 Showcase
 
@@ -61,9 +65,11 @@ This is not the perfect one, but it is a good start. Give me a try, and let me k
    Create a `.env` file in the root directory:
    ```env
    GEMINI_API_KEY=your_gemini_api_key_here
+   KLING_ACCESS_KEY=your_kling_access_key_here
+   KLING_SECRET_KEY=your_kling_secret_key_here
    ```
    
-   > ⚠️ **Security**: The API key is stored server-side only and never exposed to the client.
+   > ⚠️ **Security**: API keys are stored server-side only and never exposed to the client.
 
 4. **Start the development server**
    ```bash
@@ -83,8 +89,12 @@ TwitCanva/
 │   │   ├── canvas/               # Canvas node components
 │   │   │   ├── CanvasNode.tsx    # Main node wrapper
 │   │   │   ├── NodeContent.tsx   # Node content display
-│   │   │   ├── NodeControls.tsx  # Node control panel
+│   │   │   ├── NodeControls.tsx  # Node control panel (model selection, prompts)
 │   │   │   └── NodeConnectors.tsx# Connection points
+│   │   ├── modals/               # Modal dialogs
+│   │   │   ├── ImageEditorModal.tsx  # Image editing
+│   │   │   └── CreateAssetModal.tsx  # Asset creation
+│   │   ├── AssetLibraryPanel.tsx # Reusable assets panel
 │   │   ├── ChatPanel.tsx         # AI chat interface
 │   │   ├── WorkflowPanel.tsx     # Workflow save/load UI
 │   │   ├── HistoryPanel.tsx      # Asset history browser
@@ -94,12 +104,14 @@ TwitCanva/
 │   ├── hooks/                    # Custom React hooks
 │   │   ├── useCanvasNavigation.ts# Viewport/zoom/pan
 │   │   ├── useNodeManagement.ts  # Node CRUD operations
-│   │   ├── useConnectionDragging.ts# Connection dragging
+│   │   ├── useConnectionDragging.ts# Connection dragging + validation
 │   │   ├── useNodeDragging.ts    # Node dragging
-│   │   ├── useGeneration.ts      # AI generation logic
+│   │   ├── useGeneration.ts      # AI generation logic (multi-model)
+│   │   ├── useGroupManagement.ts # Node grouping
+│   │   ├── useSelectionBox.ts    # Multi-select
 │   │   ├── useChatAgent.ts       # Chat agent hook
 │   │   ├── useWorkflow.ts        # Workflow management
-│   │   └── useHistory.ts         # Asset history
+│   │   └── useHistory.ts         # Undo/redo
 │   ├── services/                 # API integration
 │   │   └── geminiService.ts      # Backend API calls
 │   ├── utils/                    # Utility functions
@@ -110,14 +122,21 @@ TwitCanva/
 │   └── index.tsx                 # Entry point
 │
 ├── server/                       # Backend server
-│   ├── index.js                  # Express server & API routes
-│   ├── migrate-workflows.js      # Workflow migration utility
+│   ├── index.js                  # Express server entry
+│   ├── routes/                   # API route handlers
+│   │   └── generation.js         # Image/video generation endpoints
+│   ├── services/                 # External API integrations
+│   │   ├── gemini.js             # Google Gemini/Veo service
+│   │   └── kling.js              # Kling AI service (V1-V2.5)
+│   ├── utils/                    # Utility functions
+│   │   └── base64.js             # Base64 encoding helpers
 │   └── agent/                    # LangGraph chat agent
 │       ├── index.js              # Agent entry point
 │       ├── graph/                # LangGraph definition
 │       ├── prompts/              # System prompts
 │       └── tools/                # Agent tools
 │
+├── library/                      # Asset library storage
 ├── assets/                       # Generated assets (auto-created)
 │   ├── images/                   # Saved images (.png + .json metadata)
 │   ├── videos/                   # Saved videos (.mp4 + .json metadata)
@@ -151,21 +170,6 @@ All generated assets are automatically saved to local folders. **These folders a
 3. **Metadata**: Each asset has a `.json` file with prompt, timestamp, and other info
 4. **Persistence**: Assets persist across server restarts
 
-### Example File Structure
-
-```
-assets/
-├── images/
-│   ├── img_1702500000000_abc123.png    # Generated image
-│   └── img_1702500000000_abc123.json   # Metadata (prompt, timestamp)
-├── videos/
-│   ├── vid_1702500000000_xyz789.mp4    # Generated video
-│   └── vid_1702500000000_xyz789.json   # Metadata
-├── workflows/
-│   └── workflow-uuid-here.json          # Complete workflow state
-└── chats/
-    └── session-uuid-here.json           # Chat history
-```
 
 > **Note**: The `assets/` folder is in `.gitignore` and won't be committed to the repository.
 
@@ -245,8 +249,29 @@ Your API key is **never exposed** to the browser:
 - **dotenv** - Environment variables
 
 ### AI Models
-- **Gemini 3 Pro** - Image generation
-- **Veo 3.1 Fast** - Video generation
+
+**Image Generation:**
+| Model | Provider | Image-to-Image | Multi-Image |
+|-------|----------|:-------------:|:-----------:|
+| Gemini Pro | Google | ✅ | ✅ |
+| Kling V1 | Kling AI | ✅ | ❌ |
+| Kling V1.5 | Kling AI | ✅ | ❌ |
+| Kling V2 New | Kling AI | ❌ | ❌ |
+| Kling V2.1 | Kling AI | ❌ | ✅ |
+
+**Video Generation:**
+| Model | Provider | Text-to-Video | Image-to-Video | Frame-to-Frame |
+|-------|----------|:-------------:|:--------------:|:--------------:|
+| Veo 3.1 | Google | ✅ | ✅ | ✅ |
+| Kling V1 | Kling AI | ✅ | ✅ | ❌ |
+| Kling V1.5 | Kling AI | ✅ | ✅ | ❌ |
+| Kling V1.6 | Kling AI | ✅ | ✅ | ✅ |
+| Kling V2 Master | Kling AI | ✅ | ✅ | ❌ |
+| Kling V2.1 | Kling AI | ✅ | ✅ | ❌ |
+| Kling V2.1 Master | Kling AI | ✅ | ✅ | ❌ |
+| Kling V2.5 Turbo | Kling AI | ✅ | ✅ | ❌ |
+
+**Chat:**
 - **Gemini 2.0 Flash** - Chat conversations
 
 ## 🛠️ Development
