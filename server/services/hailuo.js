@@ -163,6 +163,7 @@ export async function generateHailuoVideo({
     lastFrameBase64,
     modelId,
     resolution,
+    duration,
     apiKey
 }) {
     if (!apiKey) {
@@ -174,11 +175,11 @@ export async function generateHailuoVideo({
     const modelName = mapHailuoModelName(modelId, hasFirstFrame, hasLastFrame);
     const mappedResolution = mapResolution(resolution);
 
-    // Prepare request body
+    // Prepare request body - duration can be 6 or 10 seconds for Hailuo
     const body = {
         model: modelName,
         prompt: prompt || '',
-        duration: 6,
+        duration: duration || 6,
         resolution: mappedResolution
     };
 

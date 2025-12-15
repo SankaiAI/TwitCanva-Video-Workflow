@@ -37,6 +37,7 @@ export interface NodeData {
   videoMode?: 'standard' | 'frame-to-frame'; // Video generation mode
   frameInputs?: { nodeId: string; order: 'start' | 'end' }[]; // For frame-to-frame: connected image nodes
   videoModel?: string; // Video model version (e.g., 'veo-3.1', 'kling-v2-1')
+  videoDuration?: number; // Video duration in seconds (e.g., 5, 6, 8, 10)
 
   // Settings
   model: string;

@@ -132,7 +132,7 @@ router.post('/generate-image', async (req, res) => {
 
 router.post('/generate-video', async (req, res) => {
     try {
-        const { prompt, imageBase64: rawImageBase64, lastFrameBase64: rawLastFrameBase64, aspectRatio, resolution, videoModel } = req.body;
+        const { prompt, imageBase64: rawImageBase64, lastFrameBase64: rawLastFrameBase64, aspectRatio, resolution, duration, videoModel } = req.body;
         const { GEMINI_API_KEY, KLING_ACCESS_KEY, KLING_SECRET_KEY, HAILUO_API_KEY, VIDEOS_DIR } = req.app.locals;
 
         // Resolve file URLs to base64
@@ -153,7 +153,7 @@ router.post('/generate-video', async (req, res) => {
                 });
             }
 
-            console.log(`Using Kling AI model: ${videoModel}`);
+            console.log(`Using Kling AI model: ${videoModel}, duration: ${duration || 5}s`);
 
             const klingVideoUrl = await generateKlingVideo({
                 prompt,
@@ -161,6 +161,7 @@ router.post('/generate-video', async (req, res) => {
                 lastFrameBase64,
                 modelId: videoModel,
                 aspectRatio,
+                duration: duration || 5,
                 accessKey: KLING_ACCESS_KEY,
                 secretKey: KLING_SECRET_KEY
             });
@@ -180,7 +181,7 @@ router.post('/generate-video', async (req, res) => {
                 });
             }
 
-            console.log(`Using Hailuo AI model: ${videoModel}`);
+            console.log(`Using Hailuo AI model: ${videoModel}, duration: ${duration || 6}s`);
 
             const hailuoVideoUrl = await generateHailuoVideo({
                 prompt,
@@ -188,6 +189,7 @@ router.post('/generate-video', async (req, res) => {
                 lastFrameBase64,
                 modelId: videoModel,
                 resolution,
+                duration: duration || 6,
                 apiKey: HAILUO_API_KEY
             });
 

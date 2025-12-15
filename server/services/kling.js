@@ -154,18 +154,18 @@ async function pollKlingVideoTask(taskId, endpoint, token, maxWaitMs = 300000) {
 /**
  * Generate video using Kling AI Image-to-Video API
  */
-export async function generateKlingVideo({ prompt, imageBase64, lastFrameBase64, modelId, aspectRatio, accessKey, secretKey }) {
+export async function generateKlingVideo({ prompt, imageBase64, lastFrameBase64, modelId, aspectRatio, duration, accessKey, secretKey }) {
     const token = generateKlingJWT(accessKey, secretKey);
     const modelName = mapKlingVideoModelName(modelId);
 
     // Use 'pro' mode when doing frame-to-frame (with end frame), otherwise 'std'
     const useProMode = !!lastFrameBase64;
 
-    // Prepare request body
+    // Prepare request body - duration can be 5 or 10 seconds
     const body = {
         model_name: modelName,
         mode: useProMode ? 'pro' : 'std',
-        duration: '5',
+        duration: String(duration || 5),
         prompt: prompt || ''
     };
 

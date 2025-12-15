@@ -163,6 +163,7 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
                     lastFrameBase64,
                     aspectRatio: node.aspectRatio,
                     resolution: node.resolution,
+                    duration: node.videoDuration,
                     videoModel: node.videoModel
                 });
 

@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, memo } from 'react';
-import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film } from 'lucide-react';
+import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 
 interface NodeControlsProps {
@@ -26,27 +26,32 @@ const IMAGE_RATIOS = [
 ];
 
 const VIDEO_RESOLUTIONS = [
-    "Auto", "1080p", "512p"
+    "Auto", "1080p", "768p", "720p", "512p"
 ];
+
+// Video durations in seconds
+const VIDEO_DURATIONS = [5, 6, 8, 10];
 
 // Video model versions with metadata
 // supportsTextToVideo: Can generate video from text prompt only
 // supportsImageToVideo: Can use a single input image (start frame)
 // supportsMultiImage: Can use multiple input images (frame-to-frame)
+// durations: Supported video durations in seconds
+// resolutions: Supported resolutions (model-specific)
 const VIDEO_MODELS = [
-    { id: 'veo-3.1', name: 'Veo 3.1', provider: 'google', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true },
-    { id: 'kling-v1', name: 'Kling V1', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false },
-    { id: 'kling-v1-5', name: 'Kling V1.5', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false },
-    { id: 'kling-v1-6', name: 'Kling V1.6', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true },
-    { id: 'kling-v2-master', name: 'Kling V2 Master', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false },
-    { id: 'kling-v2-1', name: 'Kling V2.1', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, recommended: true },
-    { id: 'kling-v2-1-master', name: 'Kling V2.1 Master', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false },
-    { id: 'kling-v2-5-turbo', name: 'Kling V2.5 Turbo', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false },
+    { id: 'veo-3.1', name: 'Veo 3.1', provider: 'google', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true, durations: [5, 8], resolutions: ['Auto', '720p', '1080p'] },
+    { id: 'kling-v1', name: 'Kling V1', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'] },
+    { id: 'kling-v1-5', name: 'Kling V1.5', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'] },
+    { id: 'kling-v1-6', name: 'Kling V1.6', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true, durations: [5, 10], resolutions: ['Auto'] },
+    { id: 'kling-v2-master', name: 'Kling V2 Master', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'] },
+    { id: 'kling-v2-1', name: 'Kling V2.1', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, recommended: true, durations: [5, 10], resolutions: ['Auto'] },
+    { id: 'kling-v2-1-master', name: 'Kling V2.1 Master', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'] },
+    { id: 'kling-v2-5-turbo', name: 'Kling V2.5 Turbo', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'] },
     // Hailuo AI (MiniMax) models
-    { id: 'hailuo-2.3', name: 'Hailuo 2.3', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true },
-    { id: 'hailuo-2.3-fast', name: 'Hailuo 2.3 Fast', provider: 'hailuo', supportsTextToVideo: false, supportsImageToVideo: true, supportsMultiImage: false },
-    { id: 'hailuo-02', name: 'Hailuo 02', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true },
-    { id: 'hailuo-o2', name: 'Hailuo O2', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false },
+    { id: 'hailuo-2.3', name: 'Hailuo 2.3', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true, durations: [6, 10], resolutions: ['768p', '1080p'], durationResolutionMap: { 6: ['768p', '1080p'], 10: ['768p'] } },
+    { id: 'hailuo-2.3-fast', name: 'Hailuo 2.3 Fast', provider: 'hailuo', supportsTextToVideo: false, supportsImageToVideo: true, supportsMultiImage: false, durations: [6], resolutions: ['768p', '1080p'] },
+    { id: 'hailuo-02', name: 'Hailuo 02', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true, durations: [6], resolutions: ['768p', '1080p'] },
+    { id: 'hailuo-o2', name: 'Hailuo O2', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [6], resolutions: ['768p', '1080p'] },
 ];
 
 // Image model versions with metadata
@@ -73,10 +78,12 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
 }) => {
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+    const [showDurationDropdown, setShowDurationDropdown] = useState(false);
     const [showModelDropdown, setShowModelDropdown] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [localPrompt, setLocalPrompt] = useState(data.prompt || '');
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const durationDropdownRef = useRef<HTMLDivElement>(null);
     const modelDropdownRef = useRef<HTMLDivElement>(null);
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
@@ -85,6 +92,9 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setShowSizeDropdown(false);
+            }
+            if (durationDropdownRef.current && !durationDropdownRef.current.contains(event.target as Node)) {
+                setShowDurationDropdown(false);
             }
             if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
                 setShowModelDropdown(false);
@@ -211,8 +221,51 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     }, [videoGenerationMode, data.videoModel, data.type, data.id, availableVideoModels, onUpdate]);
 
     const handleVideoModelChange = (modelId: string) => {
-        onUpdate(data.id, { videoModel: modelId });
+        const newModel = VIDEO_MODELS.find(m => m.id === modelId);
+        const updates: Partial<typeof data> = { videoModel: modelId };
+
+        // Reset duration if current duration is not supported by new model
+        if (newModel?.durations && data.videoDuration && !newModel.durations.includes(data.videoDuration)) {
+            updates.videoDuration = newModel.durations[0];
+        }
+
+        // Reset resolution if current resolution is not supported by new model
+        if (newModel?.resolutions && data.resolution && !newModel.resolutions.includes(data.resolution.toLowerCase())) {
+            updates.resolution = newModel.resolutions[0];
+        }
+
+        onUpdate(data.id, updates);
         setShowModelDropdown(false);
+    };
+
+    // Get available durations for current model
+    const availableDurations = currentVideoModel.durations || [5];
+    const currentDuration = data.videoDuration || availableDurations[0];
+
+    // Get available resolutions for current model (considering duration for models with durationResolutionMap)
+    const getAvailableResolutions = () => {
+        const model = currentVideoModel as any;
+        if (model.durationResolutionMap && currentDuration) {
+            return model.durationResolutionMap[currentDuration] || model.resolutions || VIDEO_RESOLUTIONS;
+        }
+        return model.resolutions || VIDEO_RESOLUTIONS;
+    };
+    const availableResolutions = getAvailableResolutions();
+
+    const handleDurationChange = (duration: number) => {
+        const model = currentVideoModel as any;
+        const updates: Partial<typeof data> = { videoDuration: duration };
+
+        // If model has duration-specific resolutions, reset resolution if needed
+        if (model.durationResolutionMap) {
+            const allowedResolutions = model.durationResolutionMap[duration] || model.resolutions;
+            if (data.resolution && !allowedResolutions.includes(data.resolution.toLowerCase())) {
+                updates.resolution = allowedResolutions[0];
+            }
+        }
+
+        onUpdate(data.id, updates);
+        setShowDurationDropdown(false);
     };
 
     // Image model selection logic
@@ -516,6 +569,38 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Duration Dropdown - Only for video nodes */}
+                    {isVideoNode && availableDurations.length > 0 && (
+                        <div className="relative" ref={durationDropdownRef}>
+                            <button
+                                onClick={() => setShowDurationDropdown(!showDurationDropdown)}
+                                className="flex items-center gap-1.5 text-xs font-medium bg-[#252525] hover:bg-[#333] border border-neutral-700 text-white px-2.5 py-1.5 rounded-lg transition-colors"
+                            >
+                                <Clock size={12} className="text-cyan-400" />
+                                {currentDuration}s
+                            </button>
+
+                            {/* Duration Dropdown Menu */}
+                            {showDurationDropdown && (
+                                <div className="absolute bottom-full mb-2 right-0 w-24 bg-[#252525] border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                                    <div className="px-3 py-2 text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#1f1f1f]">
+                                        Duration
+                                    </div>
+                                    {availableDurations.map((dur: number) => (
+                                        <button
+                                            key={dur}
+                                            onClick={() => handleDurationChange(dur)}
+                                            className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-[#333] transition-colors ${currentDuration === dur ? 'text-blue-400' : 'text-neutral-300'}`}
+                                        >
+                                            <span>{dur}s</span>
+                                            {currentDuration === dur && <Check size={12} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Generate Button - Active even after success to allow re-generation */}
                     {!isLoading && (

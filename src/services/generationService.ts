@@ -21,6 +21,7 @@ export interface GenerateVideoParams {
   lastFrameBase64?: string; // For frame-to-frame interpolation (end frame)
   aspectRatio?: string;
   resolution?: string; // Add resolution to params
+  duration?: number; // Video duration in seconds (e.g., 5, 6, 8, 10)
   videoModel?: string; // Video model version (e.g., 'veo-3.1', 'kling-v2-1')
 }
 
