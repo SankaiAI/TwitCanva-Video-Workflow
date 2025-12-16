@@ -16,12 +16,13 @@ interface AssetMetadata {
     createdAt: string;
     type: string;
     url: string;
+    model?: string;
 }
 
 interface HistoryPanelProps {
     isOpen: boolean;
     onClose: () => void;
-    onSelectAsset: (type: 'images' | 'videos', url: string, prompt: string) => void;
+    onSelectAsset: (type: 'images' | 'videos', url: string, prompt: string, model?: string) => void;
     panelY?: number;
 }
 
@@ -83,7 +84,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
     const handleSelectAsset = (asset: AssetMetadata) => {
         // Construct full URL for the asset
         const fullUrl = `http://localhost:3001${asset.url}`;
-        onSelectAsset(activeTab, fullUrl, asset.prompt || '');
+        onSelectAsset(activeTab, fullUrl, asset.prompt || '', asset.model);
     };
 
     // Group assets by date

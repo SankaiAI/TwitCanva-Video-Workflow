@@ -373,7 +373,7 @@ export default function App() {
   /**
    * Handle selecting an asset from history - creates new node with the image/video
    */
-  const handleSelectAsset = (type: 'images' | 'videos', url: string, prompt: string) => {
+  const handleSelectAsset = (type: 'images' | 'videos', url: string, prompt: string, model?: string) => {
     // Calculate position at center of canvas
     const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom - 170;
     const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom - 150;
@@ -381,6 +381,10 @@ export default function App() {
     // Create node with detected aspect ratio
     const createNode = (resultAspectRatio?: string, aspectRatio?: string) => {
       const isVideo = type === 'videos';
+      // Use the original model from asset metadata, or fall back to defaults
+      const defaultModel = isVideo ? 'veo-3.1' : 'imagen-3.0-generate-002';
+      const nodeModel = model || defaultModel;
+
       const newNode: NodeData = {
         id: Date.now().toString(),
         type: isVideo ? NodeType.VIDEO : NodeType.IMAGE,
@@ -390,8 +394,9 @@ export default function App() {
         status: NodeStatus.SUCCESS,
         resultUrl: url,
         resultAspectRatio,
-        model: isVideo ? 'veo-3.1' : 'imagen-3.0-generate-002',
-        videoModel: isVideo ? 'veo-3.1' : undefined,
+        model: nodeModel,
+        videoModel: isVideo ? nodeModel : undefined,
+        imageModel: !isVideo ? nodeModel : undefined,
         aspectRatio: aspectRatio || '16:9',
         resolution: isVideo ? 'Auto' : '1K'
       };
