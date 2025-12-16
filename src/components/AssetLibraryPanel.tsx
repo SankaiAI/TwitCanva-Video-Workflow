@@ -110,8 +110,8 @@ export const AssetLibraryPanel: React.FC<AssetLibraryPanelProps> = ({
 
     return (
         <div
-            className="fixed left-20 z-40 w-96 bg-[#0a0a0a]/95 backdrop-blur-xl border border-neutral-800 rounded-2xl shadow-2xl flex flex-col h-[600px] overflow-hidden animate-in slide-in-from-left-4 duration-200"
-            style={{ top: Math.min(window.innerHeight - 610, Math.max(20, panelY)) }}
+            className="fixed left-20 z-40 w-[700px] bg-[#0a0a0a]/95 backdrop-blur-xl border border-neutral-800 rounded-2xl shadow-2xl flex flex-col max-h-[500px] overflow-hidden animate-in slide-in-from-left-4 duration-200"
+            style={{ top: Math.min(window.innerHeight - 510, Math.max(20, panelY)) }}
         >
             <AssetLibraryContent
                 selectedCategory={selectedCategory}
@@ -173,8 +173,7 @@ const AssetLibraryContent = ({
                 </div>
 
                 {/* Content */}
-                <div className={`flex-1 overflow-y-auto pr-2 grid gap-3 pb-4 content-start ${variant === 'modal' ? 'grid-cols-4' : 'grid-cols-2'
-                    }`}>
+                <div className="flex-1 overflow-y-auto pr-2 grid gap-3 pb-4 content-start grid-cols-4">
                     {loading ? (
                         <div className="col-span-full text-center py-10 text-neutral-500">Loading...</div>
                     ) : filteredAssets.length === 0 ? (

@@ -24,17 +24,31 @@ export function resolveImageToBase64(input) {
         return input;
     }
 
+    // Normalize input - extract path from full URL if needed
+    let filePath = input;
+
+    // Handle full URLs like http://localhost:3001/library/images/...
+    if (input.startsWith('http://') || input.startsWith('https://')) {
+        try {
+            const url = new URL(input);
+            filePath = url.pathname; // Extract just the path portion
+        } catch (e) {
+            console.warn('Failed to parse URL:', input);
+            return null;
+        }
+    }
+
     // File URL (e.g., /library/images/...)
-    if (input.startsWith('/library/')) {
+    if (filePath.startsWith('/library/')) {
         try {
             // Get the library directory from environment or default
             const libraryDir = process.env.LIBRARY_DIR || path.join(process.cwd(), 'library');
-            const relativePath = input.replace('/library/', '');
-            const filePath = path.join(libraryDir, relativePath);
+            const relativePath = filePath.replace('/library/', '');
+            const absolutePath = path.join(libraryDir, relativePath);
 
-            if (fs.existsSync(filePath)) {
-                const fileBuffer = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
+            if (fs.existsSync(absolutePath)) {
+                const fileBuffer = fs.readFileSync(absolutePath);
+                const ext = path.extname(absolutePath).toLowerCase();
                 const mimeType = {
                     '.png': 'image/png',
                     '.jpg': 'image/jpeg',
@@ -44,13 +58,17 @@ export function resolveImageToBase64(input) {
                 }[ext] || 'image/png';
 
                 return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+            } else {
+                console.warn('File not found for base64 conversion:', absolutePath);
             }
         } catch (error) {
             console.error('Error resolving file to base64:', error);
         }
     }
 
-    return input;
+    // If we couldn't resolve it, return null to prevent passing invalid data to API
+    console.warn('Could not resolve image to base64:', input.substring(0, 100));
+    return null;
 }
 
 /**
