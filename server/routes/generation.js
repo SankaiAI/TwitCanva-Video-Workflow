@@ -57,6 +57,7 @@ router.post('/generate-image', async (req, res) => {
                     subjectImages: resolvedImages,
                     modelId: imageModel,
                     aspectRatio,
+                    resolution,
                     accessKey: KLING_ACCESS_KEY,
                     secretKey: KLING_SECRET_KEY
                 });
@@ -67,6 +68,7 @@ router.post('/generate-image', async (req, res) => {
                     imageBase64: resolvedImages,
                     modelId: imageModel,
                     aspectRatio,
+                    resolution,
                     accessKey: KLING_ACCESS_KEY,
                     secretKey: KLING_SECRET_KEY
                 });
@@ -99,6 +101,7 @@ router.post('/generate-image', async (req, res) => {
                 prompt,
                 imageBase64Array,
                 aspectRatio,
+                resolution,
                 apiKey: GEMINI_API_KEY
             });
         }

@@ -362,6 +362,7 @@ export async function generateKlingMultiImage({
     styleImage,
     modelId,
     aspectRatio,
+    resolution,
     accessKey,
     secretKey
 }) {
@@ -369,6 +370,14 @@ export async function generateKlingMultiImage({
 
     // Multi-image-to-image only supports kling-v2 and kling-v2-1
     const modelName = modelId === 'kling-v2-1' ? 'kling-v2-1' : 'kling-v2';
+
+    // Map resolution: "1K" -> "1k", "2K" -> "2k"
+    const resolutionMap = {
+        'Auto': '1k',
+        '1K': '1k',
+        '2K': '2k'
+    };
+    const mappedResolution = resolutionMap[resolution] || '1k';
 
     // Map aspect ratio
     const ratioMapping = {
@@ -394,6 +403,7 @@ export async function generateKlingMultiImage({
         model_name: modelName,
         prompt: prompt || '',
         aspect_ratio: mappedRatio,
+        image_size: mappedResolution,
         n: 1,
         subject_image_list: subjectImageList
     };
@@ -440,9 +450,17 @@ export async function generateKlingMultiImage({
 /**
  * Generate image using Kling AI Image Generation API
  */
-export async function generateKlingImage({ prompt, imageBase64, modelId, aspectRatio, accessKey, secretKey }) {
+export async function generateKlingImage({ prompt, imageBase64, modelId, aspectRatio, resolution, accessKey, secretKey }) {
     const token = generateKlingJWT(accessKey, secretKey);
     const modelName = mapKlingImageModelName(modelId);
+
+    // Map resolution: "1K" -> "1k", "2K" -> "2k"
+    const resolutionMap = {
+        'Auto': '1k',
+        '1K': '1k',
+        '2K': '2k'
+    };
+    const mappedResolution = resolutionMap[resolution] || '1k';
 
     // Map aspect ratio - Default to 16:9 for video-ready format
     const ratioMapping = {
@@ -465,6 +483,7 @@ export async function generateKlingImage({ prompt, imageBase64, modelId, aspectR
         model_name: modelName,
         prompt: prompt,
         aspect_ratio: mappedRatio,
+        image_size: mappedResolution,
         n: 1
     };
 

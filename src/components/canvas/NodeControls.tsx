@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, memo } from 'react';
-import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock, Expand, Shrink, Monitor } from 'lucide-react';
+import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock, Expand, Shrink, Monitor, Crop } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 
 interface NodeControlsProps {
@@ -68,6 +68,7 @@ const IMAGE_MODELS = [
         provider: 'google',
         supportsImageToImage: true,
         supportsMultiImage: true,
+        resolutions: ["1K", "2K", "4K"],
         aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"]
     },
     {
@@ -76,6 +77,7 @@ const IMAGE_MODELS = [
         provider: 'kling',
         supportsImageToImage: true,
         supportsMultiImage: false,
+        resolutions: ["1K", "2K"],
         aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
     },
     {
@@ -84,6 +86,7 @@ const IMAGE_MODELS = [
         provider: 'kling',
         supportsImageToImage: true,
         supportsMultiImage: false,
+        resolutions: ["1K", "2K"],
         aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
     },
     {
@@ -92,6 +95,7 @@ const IMAGE_MODELS = [
         provider: 'kling',
         supportsImageToImage: true,
         supportsMultiImage: true,
+        resolutions: ["1K", "2K"],
         aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
     },
     {
@@ -100,6 +104,7 @@ const IMAGE_MODELS = [
         provider: 'kling',
         supportsImageToImage: true,
         supportsMultiImage: false,
+        resolutions: ["1K", "2K"],
         aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
     },
     {
@@ -109,6 +114,7 @@ const IMAGE_MODELS = [
         supportsImageToImage: false,
         supportsMultiImage: true,
         recommended: true,
+        resolutions: ["1K", "2K"],
         aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
     },
 ];
@@ -127,12 +133,14 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     const [showSizeDropdown, setShowSizeDropdown] = useState(false);
     const [showAspectRatioDropdown, setShowAspectRatioDropdown] = useState(false);
     const [showDurationDropdown, setShowDurationDropdown] = useState(false);
+    const [showResolutionDropdown, setShowResolutionDropdown] = useState(false);
     const [showModelDropdown, setShowModelDropdown] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [localPrompt, setLocalPrompt] = useState(data.prompt || '');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const aspectRatioDropdownRef = useRef<HTMLDivElement>(null);
     const durationDropdownRef = useRef<HTMLDivElement>(null);
+    const resolutionDropdownRef = useRef<HTMLDivElement>(null);
     const modelDropdownRef = useRef<HTMLDivElement>(null);
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
@@ -150,6 +158,9 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
             }
             if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
                 setShowModelDropdown(false);
+            }
+            if (resolutionDropdownRef.current && !resolutionDropdownRef.current.contains(event.target as Node)) {
+                setShowResolutionDropdown(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -368,6 +379,11 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
 
         onUpdate(data.id, updates);
         setShowModelDropdown(false);
+    };
+
+    const handleResolutionSelect = (value: string) => {
+        onUpdate(data.id, { resolution: value });
+        setShowResolutionDropdown(false);
     };
 
     // Get frame inputs with their image URLs
@@ -628,6 +644,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                             className="flex items-center gap-1.5 text-xs font-medium bg-[#252525] hover:bg-[#333] border border-neutral-700 text-white px-2.5 py-1.5 rounded-lg transition-colors"
                         >
                             {isVideoNode && <Monitor size={12} className="text-green-400" />}
+                            {!isVideoNode && <Crop size={12} className="text-blue-400" />}
                             {data.type === NodeType.VIDEO && currentSizeLabel === 'Auto' ? 'Auto' : currentSizeLabel}
                             {currentSizeLabel === 'Auto' && data.type !== NodeType.VIDEO && (
                                 <span className="text-[10px] text-neutral-400 ml-0.5 opacity-50">16:9</span>
@@ -657,6 +674,48 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Image Resolution Dropdown - Only for Image nodes */}
+                    {!isVideoNode && (currentImageModel as any).resolutions && (
+                        <div className="relative" ref={resolutionDropdownRef}>
+                            <button
+                                onClick={() => setShowResolutionDropdown(!showResolutionDropdown)}
+                                className="flex items-center gap-1.5 text-xs font-medium bg-[#252525] hover:bg-[#333] border border-neutral-700 text-white px-2.5 py-1.5 rounded-lg transition-colors"
+                            >
+                                <Monitor size={12} className="text-green-400" />
+                                {data.resolution || 'Auto'}
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {showResolutionDropdown && (
+                                <div
+                                    className="absolute bottom-full mb-2 right-0 w-24 bg-[#252525] border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100"
+                                    onWheel={(e) => e.stopPropagation()}
+                                >
+                                    <div className="px-3 py-2 text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#1f1f1f]">
+                                        Resolution
+                                    </div>
+                                    <button
+                                        onClick={() => handleResolutionSelect('Auto')}
+                                        className={`flex items-center justify-between w-full px-3 py-2 text-xs text-left hover:bg-[#333] transition-colors ${!data.resolution || data.resolution === 'Auto' ? 'text-blue-400' : 'text-neutral-300'}`}
+                                    >
+                                        <span>Auto</span>
+                                        {(!data.resolution || data.resolution === 'Auto') && <Check size={12} />}
+                                    </button>
+                                    {(currentImageModel as any).resolutions.map((res: string) => (
+                                        <button
+                                            key={res}
+                                            onClick={() => handleResolutionSelect(res)}
+                                            className={`flex items-center justify-between w-full px-3 py-2 text-xs text-left hover:bg-[#333] transition-colors ${data.resolution === res ? 'text-blue-400' : 'text-neutral-300'}`}
+                                        >
+                                            <span>{res}</span>
+                                            {data.resolution === res && <Check size={12} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Video Aspect Ratio Dropdown - Only for video nodes */}
                     {isVideoNode && (

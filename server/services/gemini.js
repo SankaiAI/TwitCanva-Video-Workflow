@@ -33,7 +33,7 @@ export function getGeminiClient(apiKey) {
  * Generate image using Gemini
  * @returns {Promise<Buffer>} Image buffer
  */
-export async function generateGeminiImage({ prompt, imageBase64Array, aspectRatio, apiKey }) {
+export async function generateGeminiImage({ prompt, imageBase64Array, aspectRatio, resolution, apiKey }) {
     const ai = getGeminiClient(apiKey);
     const modelName = 'gemini-3-pro-image-preview';
 
@@ -73,6 +73,16 @@ export async function generateGeminiImage({ prompt, imageBase64Array, aspectRati
     };
     const mappedRatio = ratioMap[aspectRatio] || '1:1';
 
+    // Map resolution - Supports 1K, 2K, 4K (must be uppercase)
+    // Default to 1K if not specified or 'Auto'
+    const resolutionMap = {
+        'Auto': '1K',
+        '1K': '1K',
+        '2K': '2K',
+        '4K': '4K'
+    };
+    const mappedResolution = resolutionMap[resolution] || '1K';
+
     const response = await ai.models.generateContent({
         model: modelName,
         contents: {
@@ -83,7 +93,7 @@ export async function generateGeminiImage({ prompt, imageBase64Array, aspectRati
             temperature: 1.0,
             imageConfig: {
                 aspectRatio: mappedRatio,
-                imageSize: "2K"
+                imageSize: mappedResolution
             }
         }
     });

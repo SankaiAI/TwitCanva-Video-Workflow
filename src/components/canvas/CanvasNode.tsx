@@ -247,7 +247,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
 
       {/* Main Node Card - Video nodes are wider to fit more controls */}
       <div
-        className={`relative ${data.type === NodeType.VIDEO ? 'w-[385px]' : 'w-[340px]'} rounded-2xl bg-[#0f0f0f] border transition-all duration-200 flex flex-col shadow-2xl ${selected ? 'border-blue-500/50 ring-1 ring-blue-500/30' : 'border-transparent'}`}
+        className={`relative ${data.type === NodeType.VIDEO ? 'w-[385px]' : 'w-[365px]'} rounded-2xl bg-[#0f0f0f] border transition-all duration-200 flex flex-col shadow-2xl ${selected ? 'border-blue-500/50 ring-1 ring-blue-500/30' : 'border-transparent'}`}
       >
         {/* Header (Editable Title) */}
         {isEditingTitle ? (
