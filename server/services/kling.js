@@ -440,9 +440,9 @@ export async function generateKlingImage({ prompt, imageBase64, modelId, aspectR
     const token = generateKlingJWT(accessKey, secretKey);
     const modelName = mapKlingImageModelName(modelId);
 
-    // Map aspect ratio
+    // Map aspect ratio - Default to 16:9 for video-ready format
     const ratioMapping = {
-        'Auto': '1:1',
+        'Auto': '16:9',
         '1:1': '1:1',
         '16:9': '16:9',
         '9:16': '9:16',
@@ -454,7 +454,7 @@ export async function generateKlingImage({ prompt, imageBase64, modelId, aspectR
         '5:4': '4:3',
         '4:5': '3:4'
     };
-    const mappedRatio = ratioMapping[aspectRatio] || '1:1';
+    const mappedRatio = ratioMapping[aspectRatio] || '16:9';
 
     // Prepare request body
     const body = {

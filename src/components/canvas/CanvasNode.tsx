@@ -86,17 +86,61 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
     setEditedTitle(data.title || data.type);
   }, [data.title, data.type]);
 
+  // Auto-detect aspect ratio for legacy images/videos that don't have resultAspectRatio
+  React.useEffect(() => {
+    // Only detect if we have a result but no stored aspect ratio
+    if (!isSuccess || !data.resultUrl || data.resultAspectRatio) return;
+
+    if (data.type === NodeType.VIDEO) {
+      // Detect video dimensions
+      const video = document.createElement('video');
+      video.onloadedmetadata = () => {
+        if (video.videoWidth && video.videoHeight) {
+          onUpdate(data.id, { resultAspectRatio: `${video.videoWidth}/${video.videoHeight}` });
+        }
+      };
+      video.src = data.resultUrl;
+    } else {
+      // Detect image dimensions
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          onUpdate(data.id, { resultAspectRatio: `${img.naturalWidth}/${img.naturalHeight}` });
+        }
+      };
+      img.src = data.resultUrl;
+    }
+  }, [isSuccess, data.resultUrl, data.resultAspectRatio, data.type, data.id, onUpdate]);
+
   // ============================================================================
   // HELPERS
   // ============================================================================
 
   const getAspectRatioStyle = () => {
+    // When there's a successful result, ALWAYS use the result's aspect ratio (lock the node size)
+    // This prevents the node from resizing when user selects a different ratio for regeneration
+    if (isSuccess && data.resultUrl) {
+      // Use stored result aspect ratio if available
+      if (data.resultAspectRatio) {
+        return { aspectRatio: data.resultAspectRatio };
+      }
+      // If no stored ratio, use default (shouldn't happen for new content, but handles legacy)
+      if (data.type === NodeType.VIDEO) {
+        return { aspectRatio: '16/9' };
+      }
+      // Keep current shape for images without stored ratio (legacy)
+      return { aspectRatio: '1/1' };
+    }
+
+    // Video nodes without result - use default 16:9
     if (data.type === NodeType.VIDEO) {
       return { aspectRatio: '16/9' };
     }
 
+    // Image nodes without result - use the selected aspect ratio for preview
     const ratio = data.aspectRatio || 'Auto';
-    if (ratio === 'Auto') return { aspectRatio: '1/1' };
+    // Auto defaults to 16:9 for video-ready format
+    if (ratio === 'Auto') return { aspectRatio: '16/9' };
 
     const [w, h] = ratio.split(':');
     return { aspectRatio: `${w}/${h}` };

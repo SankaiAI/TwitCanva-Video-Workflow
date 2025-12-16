@@ -19,7 +19,57 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
     // HELPERS
     // ============================================================================
 
+    /**
+     * Convert pixel dimensions to closest standard aspect ratio
+     */
+    const getClosestAspectRatio = (width: number, height: number): string => {
+        const ratio = width / height;
+        const standardRatios = [
+            { label: '1:1', value: 1 },
+            { label: '16:9', value: 16 / 9 },
+            { label: '9:16', value: 9 / 16 },
+            { label: '4:3', value: 4 / 3 },
+            { label: '3:4', value: 3 / 4 },
+            { label: '3:2', value: 3 / 2 },
+            { label: '2:3', value: 2 / 3 },
+            { label: '5:4', value: 5 / 4 },
+            { label: '4:5', value: 4 / 5 },
+            { label: '21:9', value: 21 / 9 }
+        ];
 
+        let closest = standardRatios[0];
+        let minDiff = Math.abs(ratio - closest.value);
+
+        for (const r of standardRatios) {
+            const diff = Math.abs(ratio - r.value);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closest = r;
+            }
+        }
+
+        return closest.label;
+    };
+
+    /**
+     * Detect the actual aspect ratio of an image
+     * @param imageUrl - URL or base64 of the image
+     * @returns Promise with resultAspectRatio (exact) and aspectRatio (closest standard)
+     */
+    const getImageAspectRatio = (imageUrl: string): Promise<{ resultAspectRatio: string; aspectRatio: string }> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const resultAspectRatio = `${img.naturalWidth}/${img.naturalHeight}`;
+                const aspectRatio = getClosestAspectRatio(img.naturalWidth, img.naturalHeight);
+                resolve({ resultAspectRatio, aspectRatio });
+            };
+            img.onerror = () => {
+                resolve({ resultAspectRatio: '16/9', aspectRatio: '16:9' });
+            };
+            img.src = imageUrl;
+        });
+    };
 
     // ============================================================================
     // GENERATION HANDLER
@@ -95,7 +145,17 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
                     imageBase64: imageBase64s.length > 0 ? imageBase64s : undefined,
                     imageModel: node.imageModel
                 });
-                updateNode(id, { status: NodeStatus.SUCCESS, resultUrl, errorMessage: undefined });
+
+                // Detect actual image aspect ratio for display and dropdown
+                const { resultAspectRatio, aspectRatio } = await getImageAspectRatio(resultUrl);
+
+                updateNode(id, {
+                    status: NodeStatus.SUCCESS,
+                    resultUrl,
+                    resultAspectRatio,
+                    aspectRatio,
+                    errorMessage: undefined
+                });
 
 
 
@@ -170,9 +230,29 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
                 // Extract last frame for chaining
                 const lastFrame = await extractVideoLastFrame(resultUrl);
 
+                // Detect video aspect ratio
+                let resultAspectRatio: string | undefined;
+                let aspectRatio: string | undefined;
+                try {
+                    const video = document.createElement('video');
+                    await new Promise<void>((resolve) => {
+                        video.onloadedmetadata = () => {
+                            resultAspectRatio = `${video.videoWidth}/${video.videoHeight}`;
+                            aspectRatio = getClosestAspectRatio(video.videoWidth, video.videoHeight);
+                            resolve();
+                        };
+                        video.onerror = () => resolve();
+                        video.src = resultUrl;
+                    });
+                } catch (e) {
+                    // Ignore errors, use undefined aspect ratio
+                }
+
                 updateNode(id, {
                     status: NodeStatus.SUCCESS,
                     resultUrl,
+                    resultAspectRatio,
+                    aspectRatio,
                     lastFrame,
                     errorMessage: undefined // Clear any previous error
                 });

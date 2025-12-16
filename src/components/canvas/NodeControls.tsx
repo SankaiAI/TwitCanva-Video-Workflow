@@ -57,13 +57,57 @@ const VIDEO_MODELS = [
 // Image model versions with metadata
 // supportsImageToImage: Can use a single reference image
 // supportsMultiImage: Can use multiple reference images (2-4)
+// aspectRatios: Supported aspect ratios for the model
 const IMAGE_MODELS = [
-    { id: 'gemini-pro', name: 'Nano Banana Pro', provider: 'google', supportsImageToImage: true, supportsMultiImage: true },
-    { id: 'kling-v1', name: 'Kling V1', provider: 'kling', supportsImageToImage: true, supportsMultiImage: false },
-    { id: 'kling-v1-5', name: 'Kling V1.5', provider: 'kling', supportsImageToImage: true, supportsMultiImage: false },
-    { id: 'kling-v2', name: 'Kling V2', provider: 'kling', supportsImageToImage: true, supportsMultiImage: true },
-    { id: 'kling-v2-new', name: 'Kling V2 New', provider: 'kling', supportsImageToImage: true, supportsMultiImage: false },
-    { id: 'kling-v2-1', name: 'Kling V2.1', provider: 'kling', supportsImageToImage: false, supportsMultiImage: true, recommended: true },
+    {
+        id: 'gemini-pro',
+        name: 'Nano Banana Pro',
+        provider: 'google',
+        supportsImageToImage: true,
+        supportsMultiImage: true,
+        aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"]
+    },
+    {
+        id: 'kling-v1',
+        name: 'Kling V1',
+        provider: 'kling',
+        supportsImageToImage: true,
+        supportsMultiImage: false,
+        aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
+    },
+    {
+        id: 'kling-v1-5',
+        name: 'Kling V1.5',
+        provider: 'kling',
+        supportsImageToImage: true,
+        supportsMultiImage: false,
+        aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
+    },
+    {
+        id: 'kling-v2',
+        name: 'Kling V2',
+        provider: 'kling',
+        supportsImageToImage: true,
+        supportsMultiImage: true,
+        aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
+    },
+    {
+        id: 'kling-v2-new',
+        name: 'Kling V2 New',
+        provider: 'kling',
+        supportsImageToImage: true,
+        supportsMultiImage: false,
+        aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
+    },
+    {
+        id: 'kling-v2-1',
+        name: 'Kling V2.1',
+        provider: 'kling',
+        supportsImageToImage: false,
+        supportsMultiImage: true,
+        recommended: true,
+        aspectRatios: ["Auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "21:9"]
+    },
 ];
 
 const NodeControlsComponent: React.FC<NodeControlsProps> = ({
@@ -188,7 +232,11 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
         ? (data.resolution || "Auto")
         : (data.aspectRatio || "Auto");
 
-    const sizeOptions = data.type === NodeType.VIDEO ? VIDEO_RESOLUTIONS : IMAGE_RATIOS;
+    // For image nodes, use model-specific aspect ratios
+    const currentImageModelForRatios = IMAGE_MODELS.find(m => m.id === data.imageModel) || IMAGE_MODELS[0];
+    const sizeOptions = data.type === NodeType.VIDEO
+        ? VIDEO_RESOLUTIONS
+        : (currentImageModelForRatios.aspectRatios || IMAGE_RATIOS);
     const isVideoNode = data.type === NodeType.VIDEO;
     const hasConnectedImages = connectedImageNodes.length > 0;
 
@@ -297,7 +345,15 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
             : 'multi-image';
 
     const handleImageModelChange = (modelId: string) => {
-        onUpdate(data.id, { imageModel: modelId });
+        const newModel = IMAGE_MODELS.find(m => m.id === modelId);
+        const updates: Partial<typeof data> = { imageModel: modelId };
+
+        // Reset aspect ratio if current ratio is not supported by new model
+        if (newModel?.aspectRatios && data.aspectRatio && !newModel.aspectRatios.includes(data.aspectRatio)) {
+            updates.aspectRatio = 'Auto';
+        }
+
+        onUpdate(data.id, updates);
         setShowModelDropdown(false);
     };
 
@@ -560,13 +616,16 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                         >
                             {data.type === NodeType.VIDEO && currentSizeLabel === 'Auto' ? 'Auto' : currentSizeLabel}
                             {currentSizeLabel === 'Auto' && data.type !== NodeType.VIDEO && (
-                                <span className="text-[10px] text-neutral-400 ml-0.5 opacity-50">1:1</span>
+                                <span className="text-[10px] text-neutral-400 ml-0.5 opacity-50">16:9</span>
                             )}
                         </button>
 
                         {/* Dropdown Menu */}
                         {showSizeDropdown && (
-                            <div className="absolute bottom-full mb-2 right-0 w-32 bg-[#252525] border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-60 overflow-y-auto">
+                            <div
+                                className="absolute bottom-full mb-2 right-0 w-32 bg-[#252525] border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-60 overflow-y-auto"
+                                onWheel={(e) => e.stopPropagation()}
+                            >
                                 <div className="px-3 py-2 text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#1f1f1f]">
                                     {data.type === NodeType.VIDEO ? 'Resolution' : 'Aspect Ratio'}
                                 </div>

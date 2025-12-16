@@ -45,6 +45,7 @@ export interface NodeData {
   aspectRatio: string;
   resolution: string;
   isPromptExpanded?: boolean; // Whether the prompt editing area is expanded
+  resultAspectRatio?: string; // Actual aspect ratio of the generated image (e.g., '16/9')
 }
 
 export interface ContextMenuState {

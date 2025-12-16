@@ -56,6 +56,23 @@ export async function generateGeminiImage({ prompt, imageBase64Array, aspectRati
 
     parts.push({ text: prompt });
 
+    // Map aspect ratio - Gemini supports: "1:1", "3:4", "4:3", "9:16", "16:9"
+    // Default to 16:9 for video-ready format
+    const ratioMap = {
+        'Auto': '16:9',
+        '1:1': '1:1',
+        '3:4': '3:4',
+        '4:3': '4:3',
+        '3:2': '3:2',
+        '2:3': '2:3',
+        '4:5': '4:5',
+        '5:4': '5:4',
+        '9:16': '9:16',
+        '16:9': '16:9',
+        '21:9': '16:9' // Fallback for ultra-wide
+    };
+    const mappedRatio = ratioMap[aspectRatio] || '1:1';
+
     const response = await ai.models.generateContent({
         model: modelName,
         contents: {
@@ -64,6 +81,10 @@ export async function generateGeminiImage({ prompt, imageBase64Array, aspectRati
         config: {
             responseModalities: ["TEXT", "IMAGE"],
             temperature: 1.0,
+            imageConfig: {
+                aspectRatio: mappedRatio,
+                imageSize: "2K"
+            }
         }
     });
 

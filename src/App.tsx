@@ -329,6 +329,38 @@ export default function App() {
   };
 
   /**
+   * Convert pixel dimensions to closest standard aspect ratio
+   */
+  const getClosestAspectRatio = (width: number, height: number): string => {
+    const ratio = width / height;
+    const standardRatios = [
+      { label: '1:1', value: 1 },
+      { label: '16:9', value: 16 / 9 },
+      { label: '9:16', value: 9 / 16 },
+      { label: '4:3', value: 4 / 3 },
+      { label: '3:4', value: 3 / 4 },
+      { label: '3:2', value: 3 / 2 },
+      { label: '2:3', value: 2 / 3 },
+      { label: '5:4', value: 5 / 4 },
+      { label: '4:5', value: 4 / 5 },
+      { label: '21:9', value: 21 / 9 }
+    ];
+
+    let closest = standardRatios[0];
+    let minDiff = Math.abs(ratio - closest.value);
+
+    for (const r of standardRatios) {
+      const diff = Math.abs(ratio - r.value);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = r;
+      }
+    }
+
+    return closest.label;
+  };
+
+  /**
    * Handle selecting an asset from history - creates new node with the image/video
    */
   const handleSelectAsset = (type: 'images' | 'videos', url: string, prompt: string) => {
@@ -336,23 +368,56 @@ export default function App() {
     const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom - 170;
     const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom - 150;
 
-    // Create new node with the selected asset
-    const newNode: NodeData = {
-      id: Date.now().toString(),
-      type: type === 'images' ? NodeType.IMAGE : NodeType.VIDEO,
-      x: centerX,
-      y: centerY,
-      prompt: prompt,
-      status: NodeStatus.SUCCESS,
-      resultUrl: url,
-      model: 'imagen-3.0-generate-002',
-      aspectRatio: '1:1',
-      resolution: '1024x1024'
+    // Create node with detected aspect ratio
+    const createNode = (resultAspectRatio?: string, aspectRatio?: string) => {
+      const newNode: NodeData = {
+        id: Date.now().toString(),
+        type: type === 'images' ? NodeType.IMAGE : NodeType.VIDEO,
+        x: centerX,
+        y: centerY,
+        prompt: prompt,
+        status: NodeStatus.SUCCESS,
+        resultUrl: url,
+        resultAspectRatio,
+        model: 'imagen-3.0-generate-002',
+        aspectRatio: aspectRatio || '16:9',
+        resolution: '1024x1024'
+      };
+
+      setNodes(prev => [...prev, newNode]);
+      closeHistoryPanel();
+      closeAssetLibrary();
     };
 
-    setNodes(prev => [...prev, newNode]);
-    closeHistoryPanel();
-    closeAssetLibrary();
+    if (type === 'images') {
+      // Detect image dimensions
+      const img = new Image();
+      img.onload = () => {
+        const resultAspectRatio = `${img.naturalWidth}/${img.naturalHeight}`;
+        const aspectRatio = getClosestAspectRatio(img.naturalWidth, img.naturalHeight);
+        console.log(`[App] Image loaded: ${img.naturalWidth}x${img.naturalHeight} -> ${aspectRatio}`);
+        createNode(resultAspectRatio, aspectRatio);
+      };
+      img.onerror = () => {
+        console.log('[App] Image load error, using default 16:9');
+        createNode(undefined, '16:9');
+      };
+      img.src = url;
+    } else {
+      // Detect video dimensions
+      const video = document.createElement('video');
+      video.onloadedmetadata = () => {
+        const resultAspectRatio = `${video.videoWidth}/${video.videoHeight}`;
+        const aspectRatio = getClosestAspectRatio(video.videoWidth, video.videoHeight);
+        console.log(`[App] Video loaded: ${video.videoWidth}x${video.videoHeight} -> ${aspectRatio}`);
+        createNode(resultAspectRatio, aspectRatio);
+      };
+      video.onerror = () => {
+        console.log('[App] Video load error, using default 16:9');
+        createNode(undefined, '16:9');
+      };
+      video.src = url;
+    }
   };
 
   const handleLibrarySelect = (url: string, type: 'image' | 'video') => {
