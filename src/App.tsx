@@ -857,13 +857,20 @@ export default function App() {
         nodeId={editorModal.nodeId || ''}
         imageUrl={editorModal.imageUrl}
         initialPrompt={nodes.find(n => n.id === editorModal.nodeId)?.prompt}
+        initialModel={nodes.find(n => n.id === editorModal.nodeId)?.imageModel || 'gemini-pro'}
+        initialAspectRatio={nodes.find(n => n.id === editorModal.nodeId)?.aspectRatio || 'Auto'}
+        initialResolution={nodes.find(n => n.id === editorModal.nodeId)?.resolution || '1K'}
         onClose={handleCloseImageEditor}
         onGenerate={async (sourceId, prompt, count) => {
           handleCloseImageEditor();
-          updateNode(sourceId, { prompt });
 
           const sourceNode = nodes.find(n => n.id === sourceId);
           if (!sourceNode) return;
+
+          // Get settings from source node (which were updated by the modal)
+          const imageModel = sourceNode.imageModel || 'gemini-pro';
+          const aspectRatio = sourceNode.aspectRatio || 'Auto';
+          const resolution = sourceNode.resolution || '1K';
 
           const startX = sourceNode.x + 360; // Source width + gap
           const startY = sourceNode.y;
@@ -874,7 +881,7 @@ export default function App() {
           const totalHeight = (count - 1) * yStep;
           const startYOffset = -totalHeight / 2;
 
-          // Create N nodes
+          // Create N nodes with inherited settings
           for (let i = 0; i < count; i++) {
             newNodes.push({
               id: crypto.randomUUID(),
@@ -884,8 +891,9 @@ export default function App() {
               prompt: prompt,
               status: NodeStatus.LOADING,
               model: 'Banana Pro',
-              aspectRatio: 'Auto',
-              resolution: 'Auto',
+              imageModel: imageModel,
+              aspectRatio: aspectRatio,
+              resolution: resolution,
               parentIds: [sourceId]
             });
           }
@@ -904,7 +912,10 @@ export default function App() {
             try {
               const resultUrl = await generateImage({
                 prompt: node.prompt || '',
-                imageBase64: imageBase64
+                imageBase64: imageBase64,
+                imageModel: imageModel,
+                aspectRatio: aspectRatio,
+                resolution: resolution
               });
               updateNode(node.id, { status: NodeStatus.SUCCESS, resultUrl });
             } catch (error: any) {

@@ -83,20 +83,40 @@ export async function generateGeminiImage({ prompt, imageBase64Array, aspectRati
     };
     const mappedResolution = resolutionMap[resolution] || '1K';
 
-    const response = await ai.models.generateContent({
+    console.log('[Gemini Image] Generating with:', {
         model: modelName,
-        contents: {
-            parts: parts
-        },
-        config: {
-            responseModalities: ["TEXT", "IMAGE"],
-            temperature: 1.0,
-            imageConfig: {
-                aspectRatio: mappedRatio,
-                imageSize: mappedResolution
-            }
-        }
+        hasInputImages: imageBase64Array?.length || 0,
+        aspectRatio: mappedRatio,
+        resolution: mappedResolution,
+        promptPreview: prompt?.substring(0, 80) + '...'
     });
+
+    let response;
+    try {
+        response = await ai.models.generateContent({
+            model: modelName,
+            contents: {
+                parts: parts
+            },
+            config: {
+                responseModalities: ["TEXT", "IMAGE"],
+                temperature: 1.0,
+                imageConfig: {
+                    aspectRatio: mappedRatio,
+                    imageSize: mappedResolution
+                }
+            }
+        });
+    } catch (error) {
+        console.error('[Gemini Image] API Error Details:', {
+            message: error.message,
+            status: error.status,
+            hasInputImages: imageBase64Array?.length || 0,
+            aspectRatio: mappedRatio,
+            resolution: mappedResolution
+        });
+        throw error;
+    }
 
     const candidates = response.candidates || [];
     if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
