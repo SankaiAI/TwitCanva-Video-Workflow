@@ -32,10 +32,10 @@ export const useCanvasNavigation = () => {
             let targetZoom = viewport.zoom * s;
 
             // Apply size limit if hovering over a node
-            // Node dimensions: 600px wide, ~650px high (approx)
+            // Node dimensions: 600px wide (NodeControls), ~700px high (est. including prompt and controls)
             if (hoveredNode) {
                 const nodeWidth = 600;
-                const nodeHeight = 650;
+                const nodeHeight = 700;
                 const maxZWidth = (window.innerWidth * 0.9) / nodeWidth;
                 const maxZHeight = (window.innerHeight * 0.9) / nodeHeight;
                 const maxNodeZoom = Math.min(maxZWidth, maxZHeight);
@@ -44,7 +44,7 @@ export const useCanvasNavigation = () => {
                 targetZoom = Math.min(targetZoom, maxNodeZoom);
             }
 
-            const newZoom = Math.min(Math.max(0.1, targetZoom), 5);
+            const newZoom = Math.min(Math.max(0.1, targetZoom), 2.0);
 
             const rect = canvasRef.current?.getBoundingClientRect();
             if (rect) {
