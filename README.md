@@ -3,7 +3,7 @@
   <h1>TwitCanva</h1>
 </div>
 
-A modern, AI-powered canvas application for generating and manipulating images and videos using OpenAI GPT Image, Google Gemini, Kling AI, and Hailuo AI (MiniMax). Built with React, TypeScript, and Vite.
+A modern, AI-powered canvas application for generating and manipulating images and videos using OpenAI GPT Image, Google Gemini, Kling AI, Hailuo AI (MiniMax), and Fal.ai. Built with React, TypeScript, and Vite.
 
 ![TwitCanva](https://img.shields.io/badge/React-18.3.1-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.6.2-blue)
@@ -14,7 +14,8 @@ A modern, AI-powered canvas application for generating and manipulating images a
 
 - **🎨 Visual Canvas Interface** - Drag-and-drop node-based workflow
 - **🤖 Multi-Model AI Generation** - GPT Image 1.5, Gemini Pro, Kling V1-V2.5 for images
-- **🎬 Multi-Model Video Generation** - Veo 3.1, Kling V1-V2.5, Hailuo 2.3/O2 for videos
+- **🎬 Multi-Model Video Generation** - Veo 3.1, Kling V1-V2.6, Hailuo 2.3/O2 for videos
+- **💃 Motion Control** - Transfer motion from reference videos to character images (Kling V2.6 via Fal.ai)
 - **🖼️ Image-to-Image** - Use reference images for generation
 - **📽️ Frame-to-Frame Video** - Animate between start and end frames
 - **🔗 Smart Node Connections** - Type-aware validation (IMAGE→VIDEO, TEXT→IMAGE, etc.)
@@ -55,6 +56,7 @@ This is not the perfect one, but it is a good start. Give me a try, and let me k
 - Hailuo AI API key (get one at [MiniMax Platform](https://platform.minimax.io/user-center/basic-information/interface-key))
 - OpenAI API key (get one at [OpenAI Platform](https://platform.openai.com/api-keys))
   - Requires [organization verification](https://platform.openai.com/settings/organization/general) to use GPT Image models
+- Fal.ai API key (get one at [Fal.ai Dashboard](https://fal.ai/dashboard/keys)) - Required for Kling V2.6 Motion Control
 
 ### Installation
 
@@ -85,6 +87,9 @@ This is not the perfect one, but it is a good start. Give me a try, and let me k
    
    # Get from https://platform.openai.com/api-keys
    OPENAI_API_KEY=your_openai_api_key_here
+   
+   # Get from https://fal.ai/dashboard/keys (for Kling V2.6 Motion Control)
+   FAL_API_KEY=your_fal_api_key_here
    ```
    
    > ⚠️ **Security**: API keys are stored server-side only and never exposed to the client.
@@ -146,6 +151,7 @@ TwitCanva/
 │   ├── services/                 # External API integrations
 │   │   ├── gemini.js             # Google Gemini/Veo service
 │   │   ├── kling.js              # Kling AI service (V1-V2.5)
+│   │   ├── fal.js                # Fal.ai service (Kling V2.6 Motion Control)
 │   │   ├── hailuo.js             # Hailuo AI (MiniMax) service
 │   │   └── openai.js             # OpenAI GPT Image service
 │   ├── utils/                    # Utility functions
@@ -296,6 +302,7 @@ Your API key is **never exposed** to the browser:
 | Hailuo 2.3 Fast | MiniMax | ❌ | ✅ | ❌ |
 | Hailuo 02 | MiniMax | ✅ | ✅ | ✅ |
 | Hailuo O2 | MiniMax | ✅ | ✅ | ❌ |
+| Kling V2.6 Motion | Fal.ai | ❌ | ✅ | Motion Control |
 
 **Chat:**
 - **Gemini 2.0 Flash** - Chat conversations
@@ -342,11 +349,12 @@ If you are using this project for commercial purposes or building a commercial p
 - Google Gemini API for AI generation
 - Kling AI for video generation
 - MiniMax for Hailuo AI video generation
+- Fal.ai for Kling V2.6 Motion Control API
 - LangGraph for agent framework
 - React team for the amazing framework
 - Vite team for the blazing-fast build tool
 
 ---
 
-**Built with ❤️ using React, TypeScript, and AI APIs from OpenAI, Google, Kling, and MiniMax (2025)**
+**Built with ❤️ using React, TypeScript, and AI APIs from OpenAI, Google, Kling, MiniMax, and Fal.ai (2025)**
 
