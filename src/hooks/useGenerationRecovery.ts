@@ -7,6 +7,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { NodeData, NodeStatus } from '../types';
+import { extractVideoLastFrame } from '../utils/videoHelpers';
 
 interface UseGenerationRecoveryOptions {
     nodes: NodeData[];
@@ -28,14 +29,24 @@ export const useGenerationRecovery = ({
                     console.log(`[Recovery] SUCCESS: Found result for node ${nodeId}:`, data.resultUrl);
 
                     // Update node with success status and result URL
-                    // Note: We don't have the aspect ratio or last frame, but the node will
-                    // attempt to load the image and we can detect it then if needed, 
-                    // or just show the result.
-                    updateNode(nodeId, {
+                    const updates: Partial<NodeData> = {
                         status: NodeStatus.SUCCESS,
                         resultUrl: data.resultUrl,
                         errorMessage: undefined
-                    });
+                    };
+
+                    // If it's a video, extract the last frame for chaining
+                    if (data.type === 'video') {
+                        try {
+                            console.log(`[Recovery] Extracting last frame for video node ${nodeId}...`);
+                            const lastFrame = await extractVideoLastFrame(data.resultUrl);
+                            updates.lastFrame = lastFrame;
+                        } catch (err) {
+                            console.error(`[Recovery] Failed to extract last frame for node ${nodeId}:`, err);
+                        }
+                    }
+
+                    updateNode(nodeId, updates);
                 }
             }
         } catch (error) {

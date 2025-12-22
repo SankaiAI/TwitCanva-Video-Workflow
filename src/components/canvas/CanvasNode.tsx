@@ -14,7 +14,7 @@ import { NodeControls } from './NodeControls';
 interface CanvasNodeProps {
   data: NodeData;
   inputUrl?: string;
-  connectedImageNodes?: { id: string; url: string }[]; // For frame-to-frame video mode
+  connectedImageNodes?: { id: string; url: string; type?: NodeType }[]; // For frame-to-frame video mode and motion control
   onUpdate: (id: string, updates: Partial<NodeData>) => void;
   onGenerate: (id: string) => void;
   onAddNext: (id: string, type: 'left' | 'right') => void;

@@ -756,12 +756,12 @@ export default function App() {
                   return parent?.resultUrl;
                 })()}
                 connectedImageNodes={(() => {
-                  // Gather all connected parent image nodes with their URLs for frame-to-frame mode
+                  // Gather all connected parent nodes (image or video) with their URLs
                   if (!node.parentIds || node.parentIds.length === 0) return [];
                   return node.parentIds
                     .map(parentId => nodes.find(n => n.id === parentId))
-                    .filter(parent => parent && parent.type === NodeType.IMAGE && parent.resultUrl)
-                    .map(parent => ({ id: parent!.id, url: parent!.resultUrl! }));
+                    .filter(parent => parent && (parent.type === NodeType.IMAGE || parent.type === NodeType.VIDEO) && parent.resultUrl)
+                    .map(parent => ({ id: parent!.id, url: parent!.resultUrl!, type: parent!.type }));
                 })()}
                 onUpdate={updateNodeWithSync}
                 onGenerate={handleGenerate}

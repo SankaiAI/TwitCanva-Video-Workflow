@@ -24,6 +24,7 @@ export interface GenerateVideoParams {
   resolution?: string; // Add resolution to params
   duration?: number; // Video duration in seconds (e.g., 5, 6, 8, 10)
   videoModel?: string; // Video model version (e.g., 'veo-3.1', 'kling-v2-1')
+  motionReferenceUrl?: string; // For Kling 2.6 motion control
   nodeId?: string; // ID of the node initiating generation
 }
 

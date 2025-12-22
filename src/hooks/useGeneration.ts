@@ -177,6 +177,19 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
                 const hasExplicitFrameInputs = node.frameInputs && node.frameInputs.length >= 2;
                 const isFrameToFrame = node.videoMode === 'frame-to-frame' || hasMultipleInputs || hasExplicitFrameInputs;
 
+                // Motion Reference logic (Kling 2.6)
+                let motionReferenceUrl: string | undefined;
+                if (node.videoModel === 'kling-v2-6') {
+                    // Find a parent video node that has a result
+                    const videoParent = node.parentIds
+                        ?.map(pid => nodes.find(n => n.id === pid))
+                        .find(n => n?.type === NodeType.VIDEO && n.resultUrl);
+
+                    if (videoParent) {
+                        motionReferenceUrl = videoParent.resultUrl;
+                    }
+                }
+
                 if (isFrameToFrame && imageParentIds.length >= 2) {
                     // Get start and end frames from frameInputs (if user reordered) or default order
                     const parent1 = nodes.find(n => n.id === imageParentIds[0]);
@@ -227,6 +240,7 @@ export const useGeneration = ({ nodes, updateNode }: UseGenerationProps) => {
                     resolution: node.resolution,
                     duration: node.videoDuration,
                     videoModel: node.videoModel,
+                    motionReferenceUrl,
                     nodeId: id
                 });
 

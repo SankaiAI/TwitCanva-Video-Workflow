@@ -16,7 +16,7 @@ interface NodeControlsProps {
     inputUrl?: string;
     isLoading: boolean;
     isSuccess: boolean;
-    connectedImageNodes?: { id: string; url: string }[]; // Connected image nodes for frame-to-frame
+    connectedImageNodes?: { id: string; url: string; type?: NodeType }[]; // Connected parent nodes
     onUpdate: (id: string, updates: Partial<NodeData>) => void;
     onGenerate: (id: string) => void;
     onSelect: (id: string) => void;
@@ -52,6 +52,7 @@ const VIDEO_MODELS = [
     { id: 'kling-v2-1', name: 'Kling V2.1', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, recommended: true, durations: [5, 10], resolutions: ['Auto'], aspectRatios: ['16:9', '9:16'] },
     { id: 'kling-v2-1-master', name: 'Kling V2.1 Master', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'], aspectRatios: ['16:9', '9:16'] },
     { id: 'kling-v2-5-turbo', name: 'Kling V2.5 Turbo', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: false, durations: [5, 10], resolutions: ['Auto'], aspectRatios: ['16:9', '9:16'] },
+    { id: 'kling-v2-6', name: 'Kling 2.6 (Motion)', provider: 'kling', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true, durations: [5, 10], resolutions: ['Auto'], aspectRatios: ['16:9', '9:16'] },
     // Hailuo AI (MiniMax) models - Note: API appears to only output 5s videos regardless of duration param
     { id: 'hailuo-2.3', name: 'Hailuo 2.3', provider: 'hailuo', supportsTextToVideo: true, supportsImageToVideo: true, supportsMultiImage: true, durations: [5], resolutions: ['768p', '1080p'], aspectRatios: ['16:9', '9:16'] },
     { id: 'hailuo-2.3-fast', name: 'Hailuo 2.3 Fast', provider: 'hailuo', supportsTextToVideo: false, supportsImageToVideo: true, supportsMultiImage: false, durations: [5], resolutions: ['768p', '1080p'], aspectRatios: ['16:9', '9:16'] },
@@ -282,17 +283,24 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     const isFrameToFrame = data.videoMode === 'frame-to-frame';
 
     // Determine video generation mode based on inputs and settings
-    // If 2+ images connected, treat as multi-image even if not explicitly in frame-to-frame mode
-    const videoInputCount = connectedImageNodes.length;
-    const videoGenerationMode = (isFrameToFrame || videoInputCount >= 2) ? 'frame-to-frame'
-        : (inputUrl || videoInputCount > 0) ? 'image-to-video'
-            : 'text-to-video';
+    // 1. Motion Control: If any parent is a video node
+    // 2. Frame-to-Frame: If multiple image parents or explicitly set
+    // 3. Image-to-Video: If single image parent or inputUrl (last frame)
+    // 4. Text-to-Video: Otherwise
+    const hasVideoParent = connectedImageNodes.some(n => n.type === NodeType.VIDEO);
+    const imageInputCount = connectedImageNodes.filter(n => n.type === NodeType.IMAGE).length;
+
+    const videoGenerationMode = hasVideoParent ? 'motion-control'
+        : (isFrameToFrame || imageInputCount >= 2) ? 'frame-to-frame'
+            : (inputUrl || imageInputCount > 0) ? 'image-to-video'
+                : 'text-to-video';
 
     // Filter video models based on mode
     const availableVideoModels = VIDEO_MODELS.filter(model => {
+        if (videoGenerationMode === 'motion-control') return model.id === 'kling-v2-6'; // Only Kling 2.6 for now
         if (videoGenerationMode === 'text-to-video') return model.supportsTextToVideo;
         if (videoGenerationMode === 'image-to-video') return model.supportsImageToVideo;
-        return model.supportsMultiImage; // frame-to-frame / multi-image
+        return model.supportsMultiImage; // frame-to-frame
     });
 
     // Auto-select first available video model when current is no longer valid
@@ -509,11 +517,13 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                     {/* Mode indicator */}
                                     <div className="px-3 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-[#1a1a1a] border-b border-neutral-700 flex items-center gap-1.5">
                                         <span className={`w-1.5 h-1.5 rounded-full ${videoGenerationMode === 'text-to-video' ? 'bg-blue-400' :
-                                            videoGenerationMode === 'image-to-video' ? 'bg-green-400' : 'bg-purple-400'
+                                            videoGenerationMode === 'image-to-video' ? 'bg-green-400' :
+                                                videoGenerationMode === 'motion-control' ? 'bg-orange-400' : 'bg-purple-400'
                                             }`} />
                                         {videoGenerationMode === 'text-to-video' ? 'Text → Video' :
                                             videoGenerationMode === 'image-to-video' ? 'Image → Video' :
-                                                'Frame-to-Frame'}
+                                                videoGenerationMode === 'motion-control' ? 'Motion Control' :
+                                                    'Frame-to-Frame'}
                                     </div>
                                     {/* Google Models */}
                                     {availableVideoModels.filter(m => m.provider === 'google').length > 0 && (
