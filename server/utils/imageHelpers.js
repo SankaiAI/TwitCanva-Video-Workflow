@@ -54,7 +54,9 @@ export function resolveImageToBase64(input) {
                     '.jpg': 'image/jpeg',
                     '.jpeg': 'image/jpeg',
                     '.gif': 'image/gif',
-                    '.webp': 'image/webp'
+                    '.webp': 'image/webp',
+                    '.mp4': 'video/mp4',
+                    '.webm': 'video/webm'
                 }[ext] || 'image/png';
 
                 return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;

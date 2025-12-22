@@ -162,12 +162,13 @@ router.post('/generate-image', async (req, res) => {
 
 router.post('/generate-video', async (req, res) => {
     try {
-        const { nodeId, prompt, imageBase64: rawImageBase64, lastFrameBase64: rawLastFrameBase64, aspectRatio, resolution, duration, videoModel } = req.body;
+        const { nodeId, prompt, imageBase64: rawImageBase64, lastFrameBase64: rawLastFrameBase64, motionReferenceUrl: rawMotionReferenceUrl, aspectRatio, resolution, duration, videoModel } = req.body;
         const { GEMINI_API_KEY, KLING_ACCESS_KEY, KLING_SECRET_KEY, HAILUO_API_KEY, VIDEOS_DIR } = req.app.locals;
 
         // Resolve file URLs to base64
         const imageBase64 = resolveImageToBase64(rawImageBase64);
         const lastFrameBase64 = resolveImageToBase64(rawLastFrameBase64);
+        const motionReferenceUrl = resolveImageToBase64(rawMotionReferenceUrl);
 
         // Determine provider
         const isKlingModel = videoModel && videoModel.startsWith('kling-');
@@ -177,29 +178,66 @@ router.post('/generate-video', async (req, res) => {
 
         if (isKlingModel) {
             // --- KLING AI VIDEO GENERATION ---
-            if (!KLING_ACCESS_KEY || !KLING_SECRET_KEY) {
-                return res.status(500).json({
-                    error: "Kling API credentials not configured. Add KLING_ACCESS_KEY and KLING_SECRET_KEY to .env"
+
+            // Check if this is a motion control request (kling-v2-6 with motion reference)
+            const isMotionControl = videoModel === 'kling-v2-6' && motionReferenceUrl;
+
+            let resultVideoUrl;
+
+            if (isMotionControl) {
+                // --- MOTION CONTROL VIA FAL.AI ---
+                // Official Kling API doesn't support motion control, use fal.ai instead
+                const { FAL_API_KEY } = req.app.locals;
+
+                if (!FAL_API_KEY) {
+                    return res.status(500).json({
+                        error: "FAL_API_KEY not configured. Add FAL_API_KEY to .env for Kling 2.6 Motion Control."
+                    });
+                }
+
+                console.log(`\n[Route] Kling 2.6 Motion Control detected - routing to fal.ai`);
+                console.log(`[Route] Motion Reference: ${motionReferenceUrl ? 'YES (' + Math.round(motionReferenceUrl.length / 1024) + ' KB)' : 'NO'}`);
+                console.log(`[Route] Character Image: ${imageBase64 ? 'YES (' + Math.round(imageBase64.length / 1024) + ' KB)' : 'NO'}`);
+                console.log(`[Route] Prompt: ${prompt ? prompt.substring(0, 50) + '...' : '(none)'}`);
+
+                // Import and call fal.ai motion control
+                const { generateFalMotionControl } = await import('../services/fal.js');
+
+                resultVideoUrl = await generateFalMotionControl({
+                    prompt,
+                    characterImageBase64: imageBase64,
+                    motionVideoBase64: motionReferenceUrl,
+                    characterOrientation: 'video',
+                    keepOriginalSound: false,
+                    apiKey: FAL_API_KEY
+                });
+            } else {
+                // --- STANDARD KLING VIDEO GENERATION ---
+                if (!KLING_ACCESS_KEY || !KLING_SECRET_KEY) {
+                    return res.status(500).json({
+                        error: "Kling API credentials not configured. Add KLING_ACCESS_KEY and KLING_SECRET_KEY to .env"
+                    });
+                }
+
+                console.log(`Using Kling AI model: ${videoModel}, duration: ${duration || 5}s`);
+
+                resultVideoUrl = await generateKlingVideo({
+                    prompt,
+                    imageBase64,
+                    lastFrameBase64,
+                    modelId: videoModel,
+                    aspectRatio,
+                    duration: duration || 5,
+                    motionReferenceUrl,
+                    accessKey: KLING_ACCESS_KEY,
+                    secretKey: KLING_SECRET_KEY
                 });
             }
 
-            console.log(`Using Kling AI model: ${videoModel}, duration: ${duration || 5}s`);
-
-            const klingVideoUrl = await generateKlingVideo({
-                prompt,
-                imageBase64,
-                lastFrameBase64,
-                modelId: videoModel,
-                aspectRatio,
-                duration: duration || 5,
-                accessKey: KLING_ACCESS_KEY,
-                secretKey: KLING_SECRET_KEY
-            });
-
-            // Download from Kling's URL
-            const videoResponse = await fetch(klingVideoUrl);
+            // Download from the result URL
+            const videoResponse = await fetch(resultVideoUrl);
             if (!videoResponse.ok) {
-                throw new Error('Failed to download video from Kling');
+                throw new Error('Failed to download generated video');
             }
             videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
 

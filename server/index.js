@@ -85,12 +85,23 @@ if (!OPENAI_API_KEY) {
     console.warn("SERVER WARNING: OPENAI_API_KEY not set. OpenAI GPT Image models will not work.");
 }
 
+// ============================================================================
+// FAL.AI CONFIGURATION (for Kling 2.6 Motion Control)
+// ============================================================================
+
+const FAL_API_KEY = process.env.FAL_API_KEY;
+
+if (!FAL_API_KEY) {
+    console.warn("SERVER WARNING: FAL_API_KEY not set. Kling 2.6 Motion Control will not work.");
+}
+
 // Set up app.locals for sharing config with route modules
 app.locals.GEMINI_API_KEY = API_KEY;
 app.locals.KLING_ACCESS_KEY = KLING_ACCESS_KEY;
 app.locals.KLING_SECRET_KEY = KLING_SECRET_KEY;
 app.locals.HAILUO_API_KEY = HAILUO_API_KEY;
 app.locals.OPENAI_API_KEY = OPENAI_API_KEY;
+app.locals.FAL_API_KEY = FAL_API_KEY;
 app.locals.IMAGES_DIR = IMAGES_DIR;
 app.locals.VIDEOS_DIR = VIDEOS_DIR;
 
