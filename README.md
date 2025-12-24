@@ -35,6 +35,11 @@ A modern, AI-powered canvas application for generating and manipulating images a
 ### App Overview
 https://github.com/user-attachments/assets/7a64d4df-7ade-4bfa-b2cd-d615d267dd40
 
+### Motion Control Example (Kling V2.6)
+Transfer motion from a reference video to a character image - make anyone dance!
+
+https://github.com/user-attachments/assets/1ee6cbf3-00a5-496e-852c-3304c6ebc6c9
+
 ### Output Example
 Download all the generated videos and use video editting tool like CapCut to create a final video. Check result below.
 
@@ -43,6 +48,7 @@ https://github.com/user-attachments/assets/43cf8bb8-bf85-45f9-96da-657033126d94
 https://github.com/user-attachments/assets/e6f89da5-d3a6-4889-a38b-672cf37bbd79
 
 This is not the perfect one, but it is a good start. Give me a try, and let me know how I can improve it. Thank you!
+
 
 ## 🚀 Getting Started
 
