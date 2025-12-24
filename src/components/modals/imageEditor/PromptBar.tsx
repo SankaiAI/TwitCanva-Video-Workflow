@@ -8,7 +8,7 @@
 import React, { useRef, useEffect } from 'react';
 import { ChevronDown, Check, Banana, Image as ImageIcon, Crop, Monitor } from 'lucide-react';
 import { ImageModel, IMAGE_MODELS } from './imageEditor.types';
-import { OpenAIIcon } from '../../icons/BrandIcons';
+import { OpenAIIcon, KlingIcon } from '../../icons/BrandIcons';
 
 // ============================================================================
 // TYPES
@@ -108,6 +108,8 @@ export const PromptBar: React.FC<PromptBarProps> = ({
                         <Banana size={11} className="text-yellow-400" />
                     ) : currentModel.provider === 'openai' ? (
                         <OpenAIIcon size={11} className="text-green-400" />
+                    ) : currentModel.provider === 'kling' ? (
+                        <KlingIcon size={14} />
                     ) : (
                         <ImageIcon size={11} className="text-cyan-400" />
                     )}
@@ -169,7 +171,7 @@ export const PromptBar: React.FC<PromptBarProps> = ({
                                         className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-[#333] transition-colors ${currentModel.id === model.id ? 'text-blue-400' : 'text-neutral-300'}`}
                                     >
                                         <span className="flex items-center gap-2">
-                                            <ImageIcon size={12} className="text-cyan-400" />
+                                            <KlingIcon size={14} />
                                             {model.name}
                                             {model.recommended && (
                                                 <span className="text-[9px] px-1 py-0.5 bg-green-600/30 text-green-400 rounded">REC</span>

@@ -9,7 +9,7 @@
 import React, { useState, useRef, useEffect, memo } from 'react';
 import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock, Expand, Shrink, Monitor, Crop } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
-import { OpenAIIcon, GoogleIcon } from '../icons/BrandIcons';
+import { OpenAIIcon, GoogleIcon, KlingIcon, HailuoIcon } from '../icons/BrandIcons';
 
 interface NodeControlsProps {
     data: NodeData;
@@ -517,6 +517,8 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                             >
                                 {currentVideoModel.id === 'veo-3.1' ? (
                                     <GoogleIcon size={12} className="text-white" />
+                                ) : currentVideoModel.provider === 'kling' ? (
+                                    <KlingIcon size={14} />
                                 ) : (
                                     <Film size={12} className="text-cyan-400" />
                                 )}
@@ -579,7 +581,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                                         }`}
                                                 >
                                                     <span className="flex items-center gap-2">
-                                                        <Film size={12} className="text-cyan-400" />
+                                                        <KlingIcon size={14} />
                                                         {model.name}
                                                         {model.recommended && (
                                                             <span className="text-[9px] px-1 py-0.5 bg-green-600/30 text-green-400 rounded">REC</span>
@@ -605,7 +607,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                                         }`}
                                                 >
                                                     <span className="flex items-center gap-2">
-                                                        <Film size={12} className="text-pink-400" />
+                                                        <HailuoIcon size={14} />
                                                         {model.name}
                                                     </span>
                                                     {currentVideoModel.id === model.id && <Check size={12} />}
@@ -628,6 +630,8 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                     <Banana size={12} className="text-yellow-400" />
                                 ) : currentImageModel.provider === 'openai' ? (
                                     <OpenAIIcon size={12} className="text-green-400" />
+                                ) : currentImageModel.provider === 'kling' ? (
+                                    <KlingIcon size={14} />
                                 ) : (
                                     <ImageIcon size={12} className="text-cyan-400" />
                                 )}
@@ -713,7 +717,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                                         }`}
                                                 >
                                                     <span className="flex items-center gap-2">
-                                                        <ImageIcon size={12} className="text-cyan-400" />
+                                                        <KlingIcon size={14} />
                                                         {model.name}
                                                         {model.recommended && (
                                                             <span className="text-[9px] px-1 py-0.5 bg-green-600/30 text-green-400 rounded">REC</span>
