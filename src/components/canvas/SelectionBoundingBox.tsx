@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { NodeData, NodeGroup } from '../../types';
+import { NodeData, NodeGroup, NodeType } from '../../types';
 
 interface SelectionBoundingBoxProps {
     selectedNodes: NodeData[];
@@ -17,6 +17,52 @@ interface SelectionBoundingBoxProps {
     onBoundingBoxPointerDown: (e: React.PointerEvent) => void;
     onRenameGroup?: (groupId: string, newLabel: string) => void;
 }
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get the width of a node based on its type
+ */
+const getNodeWidth = (node: NodeData): number => {
+    if (node.type === NodeType.VIDEO) return 385;
+    return 365;
+};
+
+/**
+ * Estimate the height of a node based on its type and aspect ratio
+ * This accounts for the content area + any controls/padding
+ */
+const getNodeHeight = (node: NodeData): number => {
+    const baseWidth = getNodeWidth(node);
+
+    // Parse aspect ratio to calculate content height
+    let aspectRatio = 16 / 9; // Default
+
+    // First priority: use resultAspectRatio if available (actual generated content dimensions)
+    if (node.resultAspectRatio) {
+        const parts = node.resultAspectRatio.split('/');
+        if (parts.length === 2) {
+            aspectRatio = parseFloat(parts[0]) / parseFloat(parts[1]);
+        }
+    } else if (node.aspectRatio && node.aspectRatio !== 'Auto') {
+        // Use selected aspect ratio
+        const parts = node.aspectRatio.split(':');
+        if (parts.length === 2) {
+            aspectRatio = parseFloat(parts[0]) / parseFloat(parts[1]);
+        }
+    }
+
+    // Calculate content height from aspect ratio
+    const contentHeight = baseWidth / aspectRatio;
+
+    // Add padding for node chrome (title above, controls below, video player controls, etc.)
+    // This needs to be generous to account for all edge cases
+    const chromeHeight = 50; // Title and top spacing
+
+    return contentHeight + chromeHeight;
+};
 
 export const SelectionBoundingBox: React.FC<SelectionBoundingBoxProps> = ({
     selectedNodes,
@@ -41,15 +87,13 @@ export const SelectionBoundingBox: React.FC<SelectionBoundingBoxProps> = ({
     if (selectedNodes.length === 0) return null;
     if (selectedNodes.length === 1 && !group) return null;
 
-    // Calculate bounding box from all selected nodes
-    const NODE_WIDTH = 340;
-    const NODE_HEIGHT = 300;
-    const PADDING = 10;
+    // Calculate bounding box from all selected nodes with proper dimensions
+    const PADDING = 50; // Generous padding to ensure all nodes are fully contained
 
     const minX = Math.min(...selectedNodes.map(n => n.x)) - PADDING;
     const minY = Math.min(...selectedNodes.map(n => n.y)) - PADDING;
-    const maxX = Math.max(...selectedNodes.map(n => n.x + NODE_WIDTH)) + PADDING;
-    const maxY = Math.max(...selectedNodes.map(n => n.y + NODE_HEIGHT)) + PADDING;
+    const maxX = Math.max(...selectedNodes.map(n => n.x + getNodeWidth(n))) + PADDING;
+    const maxY = Math.max(...selectedNodes.map(n => n.y + getNodeHeight(n))) + PADDING;
 
     const width = maxX - minX;
     const height = maxY - minY;
@@ -70,7 +114,8 @@ export const SelectionBoundingBox: React.FC<SelectionBoundingBoxProps> = ({
                 width,
                 height,
                 border: isGrouped ? '2px solid #6366f1' : '2px dashed #6366f1',
-                borderRadius: '8px',
+                borderRadius: '12px',
+                backgroundColor: isGrouped ? 'rgba(55, 55, 55, 0.5)' : 'transparent',
                 zIndex: 5
             }}
             onPointerDown={(e) => {
