@@ -41,9 +41,12 @@ export function resolveImageToBase64(input) {
     // File URL (e.g., /library/images/...)
     if (filePath.startsWith('/library/')) {
         try {
+            // Strip query string (e.g., ?t=1234567890) used for cache-busting
+            const pathWithoutQuery = filePath.split('?')[0];
+
             // Get the library directory from environment or default
             const libraryDir = process.env.LIBRARY_DIR || path.join(process.cwd(), 'library');
-            const relativePath = filePath.replace('/library/', '');
+            const relativePath = pathWithoutQuery.replace('/library/', '');
             const absolutePath = path.join(libraryDir, relativePath);
 
             if (fs.existsSync(absolutePath)) {

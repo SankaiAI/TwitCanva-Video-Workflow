@@ -52,6 +52,13 @@ export interface NodeData {
   isPromptExpanded?: boolean; // Whether the prompt editing area is expanded
   resultAspectRatio?: string; // Actual aspect ratio of the generated image (e.g., '16/9')
   generationStartTime?: number; // Timestamp when generation started (for recovery race condition prevention)
+
+  // Kling V1.5 Image Reference Settings
+  klingReferenceMode?: 'subject' | 'face'; // Reference type for image-to-image
+  klingFaceIntensity?: number; // Face reference intensity (0-100)
+  klingSubjectIntensity?: number; // Subject reference intensity (0-100)
+  detectedFaces?: { x: number; y: number; width: number; height: number }[]; // Detected face bounding boxes
+  faceDetectionStatus?: 'idle' | 'loading' | 'success' | 'error'; // Face detection status
 }
 
 export interface ContextMenuState {

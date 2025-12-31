@@ -16,6 +16,7 @@
     "@langchain/google-genai": "^2.0.4",
     "@langchain/langgraph": "^1.0.4",
     "@lobehub/icons": "^3.0.2",
+    "face-api.js": "^0.22.2",
     "form-data": "^4.0.5",
     "lucide-react": "^0.556.0",
     "openai": "^6.14.0",

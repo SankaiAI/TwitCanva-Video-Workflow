@@ -10,6 +10,7 @@ import React, { useState, useRef, useEffect, memo } from 'react';
 import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock, Expand, Shrink, Monitor, Crop } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 import { OpenAIIcon, GoogleIcon, KlingIcon, HailuoIcon } from '../icons/BrandIcons';
+import { useFaceDetection } from '../../hooks/useFaceDetection';
 
 interface NodeControlsProps {
     data: NodeData;
@@ -163,6 +164,33 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     const modelDropdownRef = useRef<HTMLDivElement>(null);
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
+
+    // Face detection hook for Kling V1.5 Face mode
+    const { detectFaces, isModelLoaded: isFaceModelLoaded } = useFaceDetection();
+
+    // Trigger face detection when Face mode is selected
+    useEffect(() => {
+        const runFaceDetection = async () => {
+            if (
+                data.klingReferenceMode === 'face' &&
+                data.faceDetectionStatus === 'loading' &&
+                connectedImageNodes?.[0]?.url &&
+                isFaceModelLoaded
+            ) {
+                try {
+                    const faces = await detectFaces(connectedImageNodes[0].url);
+                    onUpdate(data.id, {
+                        detectedFaces: faces,
+                        faceDetectionStatus: faces.length > 0 ? 'success' : 'error'
+                    });
+                } catch (err) {
+                    console.error('Face detection failed:', err);
+                    onUpdate(data.id, { detectedFaces: [], faceDetectionStatus: 'error' });
+                }
+            }
+        };
+        runFaceDetection();
+    }, [data.klingReferenceMode, data.faceDetectionStatus, connectedImageNodes, isFaceModelLoaded, detectFaces, onUpdate, data.id]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -880,19 +908,196 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                     )}
 
                     {/* Generate Button - Active even after success to allow re-generation */}
-                    {!isLoading && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onGenerate(data.id); }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-105 ${isSuccess
-                                ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20'
-                                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20'
-                                }`}
-                        >
-                            <Sparkles size={14} fill={isSuccess ? "currentColor" : "currentColor"} />
-                        </button>
-                    )}
+                    {!isLoading && (() => {
+                        // Check if generation is blocked due to no face detected in Face mode
+                        const isFaceModeBlocked = !isVideoNode &&
+                            data.imageModel === 'kling-v1-5' &&
+                            data.klingReferenceMode === 'face' &&
+                            (data.faceDetectionStatus === 'error' || data.faceDetectionStatus === 'loading');
+
+                        return (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isFaceModeBlocked) {
+                                        // Show a warning - this is handled by the warning component
+                                        return;
+                                    }
+                                    onGenerate(data.id);
+                                }}
+                                disabled={isFaceModeBlocked}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all ${isFaceModeBlocked
+                                    ? 'bg-neutral-600 cursor-not-allowed opacity-50'
+                                    : isSuccess
+                                        ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20 hover:scale-105'
+                                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 hover:scale-105'
+                                    }`}
+                                title={isFaceModeBlocked ? 'Cannot generate: No face detected in reference image' : 'Generate'}
+                            >
+                                <Sparkles size={14} fill="currentColor" />
+                            </button>
+                        );
+                    })()}
                 </div>
             </div>
+
+            {/* Kling V1.5 Reference Settings - For Image nodes with connected input */}
+            {!isVideoNode && data.imageModel === 'kling-v1-5' && connectedImageNodes.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-neutral-800">
+                    <div className="text-[10px] text-neutral-500 uppercase tracking-wider mb-2">Reference Settings</div>
+
+                    {/* Mode Tabs */}
+                    <div className="flex gap-1 mb-3 p-1 bg-neutral-800/50 rounded-lg">
+                        <button
+                            onClick={() => onUpdate(data.id, { klingReferenceMode: 'subject', detectedFaces: undefined, faceDetectionStatus: undefined })}
+                            className={`flex-1 px-3 py-1.5 text-xs rounded-md transition-colors ${(data.klingReferenceMode || 'subject') === 'subject'
+                                ? 'bg-neutral-700 text-white font-medium'
+                                : 'text-neutral-400 hover:text-white hover:bg-neutral-700/50'
+                                }`}
+                        >
+                            Subject
+                        </button>
+                        <button
+                            onClick={() => {
+                                // Just switch mode, face detection will be triggered by effect
+                                onUpdate(data.id, { klingReferenceMode: 'face', faceDetectionStatus: 'loading', detectedFaces: undefined });
+                            }}
+                            className={`flex-1 px-3 py-1.5 text-xs rounded-md transition-colors ${data.klingReferenceMode === 'face'
+                                ? 'bg-neutral-700 text-white font-medium'
+                                : 'text-neutral-400 hover:text-white hover:bg-neutral-700/50'
+                                }`}
+                        >
+                            Face
+                        </button>
+                    </div>
+
+                    {/* Reference Image Preview with Face Detection Overlay */}
+                    {connectedImageNodes[0]?.url && (
+                        <div className="mb-3">
+                            {/* Main image with face highlight */}
+                            <div className="rounded-lg overflow-hidden bg-black relative flex items-center justify-center" style={{ maxHeight: '200px' }}>
+                                <div className="relative">
+                                    <img
+                                        src={connectedImageNodes[0].url}
+                                        alt="Reference"
+                                        className="max-h-[200px] w-auto h-auto block object-contain"
+                                    />
+                                    {/* Face detection corner brackets - Kling style */}
+                                    {data.klingReferenceMode === 'face' && data.faceDetectionStatus === 'success' && data.detectedFaces && data.detectedFaces.length > 0 && (
+                                        <>
+                                            {data.detectedFaces.map((face, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="absolute pointer-events-none"
+                                                    style={{
+                                                        left: `${face.x}%`,
+                                                        top: `${face.y}%`,
+                                                        width: `${face.width}%`,
+                                                        height: `${face.height}%`,
+                                                    }}
+                                                >
+                                                    {/* Corner brackets - larger with glow */}
+                                                    <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-green-400 rounded-tl-xl" style={{ filter: 'drop-shadow(0 0 4px rgba(74, 222, 128, 0.8))' }} />
+                                                    <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-green-400 rounded-tr-xl" style={{ filter: 'drop-shadow(0 0 4px rgba(74, 222, 128, 0.8))' }} />
+                                                    <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-green-400 rounded-bl-xl" style={{ filter: 'drop-shadow(0 0 4px rgba(74, 222, 128, 0.8))' }} />
+                                                    <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-green-400 rounded-br-xl" style={{ filter: 'drop-shadow(0 0 4px rgba(74, 222, 128, 0.8))' }} />
+                                                </div>
+                                            ))}
+                                        </>
+                                    )}
+                                    {/* Loading indicator */}
+                                    {data.klingReferenceMode === 'face' && data.faceDetectionStatus === 'loading' && (
+                                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                            <div className="text-xs text-white">Detecting faces...</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Face thumbnail below - Kling style */}
+                            {data.klingReferenceMode === 'face' && data.faceDetectionStatus === 'success' && data.detectedFaces && data.detectedFaces.length > 0 && (
+                                <div className="flex justify-center mt-3">
+                                    <div className="w-14 h-14 rounded-lg border-2 border-green-400 overflow-hidden bg-black">
+                                        <img
+                                            src={connectedImageNodes[0].url}
+                                            alt="Detected face"
+                                            className="w-full h-full object-cover"
+                                            style={{
+                                                objectPosition: `${data.detectedFaces[0].x + data.detectedFaces[0].width / 2}% ${data.detectedFaces[0].y + data.detectedFaces[0].height / 2}%`,
+                                                transform: `scale(${100 / Math.max(data.detectedFaces[0].width, data.detectedFaces[0].height) * 0.8})`
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* No Face Detected Warning */}
+                    {data.klingReferenceMode === 'face' && data.faceDetectionStatus === 'error' && (
+                        <div className="mb-3 p-2 bg-amber-900/20 border border-amber-700/50 rounded-lg">
+                            <div className="flex items-start gap-2 text-amber-400 text-xs">
+                                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>No face detected. Please use a reference image with a clearer face.</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Subject Mode: Show BOTH Face Reference and Subject Reference sliders */}
+                    {(data.klingReferenceMode || 'subject') === 'subject' && (
+                        <>
+                            <div className="space-y-1 mb-3">
+                                <div className="flex justify-between text-[10px]">
+                                    <span className="text-neutral-400">Face Reference</span>
+                                    <span className="text-white font-medium">{data.klingFaceIntensity ?? 65}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={data.klingFaceIntensity ?? 65}
+                                    onChange={(e) => onUpdate(data.id, { klingFaceIntensity: parseInt(e.target.value) })}
+                                    className="w-full h-1.5 bg-neutral-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-[10px]">
+                                    <span className="text-neutral-400">Subject Reference</span>
+                                    <span className="text-white font-medium">{data.klingSubjectIntensity ?? 50}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={data.klingSubjectIntensity ?? 50}
+                                    onChange={(e) => onUpdate(data.id, { klingSubjectIntensity: parseInt(e.target.value) })}
+                                    className="w-full h-1.5 bg-neutral-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {/* Face Mode: Show single Reference Strength slider */}
+                    {data.klingReferenceMode === 'face' && data.faceDetectionStatus === 'success' && (
+                        <div className="space-y-1">
+                            <div className="flex justify-between text-[10px]">
+                                <span className="text-neutral-400">Reference Strength</span>
+                                <span className="text-white font-medium">{data.klingFaceIntensity ?? 42}</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={data.klingFaceIntensity ?? 42}
+                                onChange={(e) => onUpdate(data.id, { klingFaceIntensity: parseInt(e.target.value) })}
+                                className="w-full h-1.5 bg-neutral-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Advanced Settings Drawer - Only for Video nodes */}
             {

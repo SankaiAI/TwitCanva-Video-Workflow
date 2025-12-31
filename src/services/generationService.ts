@@ -14,6 +14,10 @@ export interface GenerateImageParams {
   imageBase64?: string | string[]; // Supports single image or array of images
   imageModel?: string; // Image model version (e.g., 'gemini-pro', 'kling-v2')
   nodeId?: string; // ID of the node initiating generation
+  // Kling V1.5 reference settings
+  klingReferenceMode?: 'subject' | 'face';
+  klingFaceIntensity?: number; // 0-100
+  klingSubjectIntensity?: number; // 0-100
 }
 
 export interface GenerateVideoParams {

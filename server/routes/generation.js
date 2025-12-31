@@ -22,7 +22,7 @@ const router = express.Router();
 
 router.post('/generate-image', async (req, res) => {
     try {
-        const { nodeId, prompt, aspectRatio, resolution, imageBase64: rawImageBase64, imageModel } = req.body;
+        const { nodeId, prompt, aspectRatio, resolution, imageBase64: rawImageBase64, imageModel, klingReferenceMode, klingFaceIntensity, klingSubjectIntensity } = req.body;
         const { GEMINI_API_KEY, KLING_ACCESS_KEY, KLING_SECRET_KEY, OPENAI_API_KEY, IMAGES_DIR } = req.app.locals;
 
         // Determine provider
@@ -89,6 +89,9 @@ router.post('/generate-image', async (req, res) => {
                     modelId: imageModel,
                     aspectRatio,
                     resolution,
+                    klingReferenceMode,
+                    klingFaceIntensity,
+                    klingSubjectIntensity,
                     accessKey: KLING_ACCESS_KEY,
                     secretKey: KLING_SECRET_KEY
                 });

@@ -680,7 +680,7 @@ export async function generateKlingMultiImage({
 /**
  * Generate image using Kling AI Image Generation API
  */
-export async function generateKlingImage({ prompt, imageBase64, modelId, aspectRatio, resolution, accessKey, secretKey }) {
+export async function generateKlingImage({ prompt, imageBase64, modelId, aspectRatio, resolution, klingReferenceMode, klingFaceIntensity, klingSubjectIntensity, accessKey, secretKey }) {
     const token = generateKlingJWT(accessKey, secretKey);
     const modelName = mapKlingImageModelName(modelId);
 
@@ -725,7 +725,22 @@ export async function generateKlingImage({ prompt, imageBase64, modelId, aspectR
         // kling-v1-5 requires image_reference when using a reference image
         // Options: 'subject' (character feature reference) or 'face' (appearance reference)
         if (modelName === 'kling-v1-5') {
-            body.image_reference = 'subject';
+            const refMode = klingReferenceMode || 'subject';
+            body.image_reference = refMode;
+
+            if (refMode === 'subject') {
+                // Subject mode: Both face_reference_intensity and subject_reference_intensity are used
+                const faceVal = typeof klingFaceIntensity === 'number' ? klingFaceIntensity : 65;
+                const subjectVal = typeof klingSubjectIntensity === 'number' ? klingSubjectIntensity : 50;
+                body.face_reference_intensity = faceVal / 100;
+                body.subject_reference_intensity = subjectVal / 100;
+                console.log(`[Kling V1.5] Mode: SUBJECT | Face Ref: ${faceVal}% (${body.face_reference_intensity}) | Subject Ref: ${subjectVal}% (${body.subject_reference_intensity})`);
+            } else if (refMode === 'face') {
+                // Face mode: Only face_reference_intensity is used
+                const faceVal = typeof klingFaceIntensity === 'number' ? klingFaceIntensity : 42;
+                body.face_reference_intensity = faceVal / 100;
+                console.log(`[Kling V1.5] Mode: FACE | Reference Strength: ${faceVal}% (${body.face_reference_intensity})`);
+            }
         }
     }
 
