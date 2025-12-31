@@ -26,5 +26,10 @@ dist-ssr
 #env
 .env
 
+
 # data
 library/
+
+# docs
+docs/cloud_migration_plan.md
+

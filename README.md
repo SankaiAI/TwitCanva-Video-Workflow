@@ -110,6 +110,21 @@ This is not the perfect one, but it is a good start. Give me a try, and let me k
    - **Frontend dev server**: `http://localhost:5173`
    - **Backend API server**: `http://localhost:3001`
 
+### Alternative: Docker Installation
+
+If you prefer using Docker to run the application in a containerized environment (recommended for deployment):
+
+1. **Clone the repository and set up .env** (same as steps 1-3 above)
+
+2. **Run with Docker Compose**
+   ```bash
+   docker compose up -d --build
+   ```
+
+   - The app will run on `http://localhost:3001`
+   - Data persists in the local `library/` folder
+   - To stop: `docker compose down`
+
 ## 📁 Project Structure
 
 ```

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  twitcanva:
+    build: .
+    image: twitcanva:latest
+    container_name: twitcanva-app
+    ports:
+      - "3001:3001"
+    volumes:
+      # CRITICAL: Mount the local library folder to the container to persist data
+      - ./library:/app/library
+    environment:
+      - NODE_ENV=production
+      # Pass through API keys from host environment or .env file
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - KLING_ACCESS_KEY=${KLING_ACCESS_KEY}
+      - KLING_SECRET_KEY=${KLING_SECRET_KEY}
+      - HAILUO_API_KEY=${HAILUO_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - FAL_API_KEY=${FAL_API_KEY}
+    restart: unless-stopped

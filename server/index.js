@@ -994,6 +994,17 @@ app.get('/api/chat/sessions/:id', async (req, res) => {
     }
 });
 
+// Serve frontend in production
+if (process.env.NODE_ENV === 'production') {
+    const distPath = path.join(__dirname, '..', 'dist');
+    app.use(express.static(distPath));
+
+    // Handle SPA routing: serve index.html for any unknown routes
+    app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+    });
+}
+
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
 });
