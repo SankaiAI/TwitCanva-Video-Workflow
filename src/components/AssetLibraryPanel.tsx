@@ -181,7 +181,13 @@ const AssetLibraryContent = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto pr-2 grid gap-3 pb-4 content-start grid-cols-4">
+                <div
+                    className="flex-1 overflow-y-auto pr-2 grid gap-3 pb-4 content-start grid-cols-4"
+                    style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: isDark ? '#525252 #171717' : '#d4d4d4 #fafafa'
+                    }}
+                >
                     {loading ? (
                         <div className="col-span-full text-center py-10 text-neutral-500">Loading...</div>
                     ) : filteredAssets.length === 0 ? (
@@ -198,7 +204,7 @@ const AssetLibraryContent = ({
                                 <img
                                     src={asset.url}
                                     alt={asset.name}
-                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                    className="w-full h-full object-cover"
                                     onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.onerror = null; // Prevent infinite loop

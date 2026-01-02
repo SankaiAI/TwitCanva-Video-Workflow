@@ -259,7 +259,14 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 </div>
 
                 {/* Content */}
-                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
+                <div
+                    ref={scrollContainerRef}
+                    className="flex-1 overflow-y-auto p-4"
+                    style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: isDark ? '#525252 #171717' : '#d4d4d4 #fafafa'
+                    }}
+                >
                     {loading ? (
                         <div className="flex items-center justify-center h-40">
                             <Loader2 className="animate-spin text-neutral-500" size={24} />
@@ -282,7 +289,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                                             <div
                                                 key={asset.id}
                                                 onClick={() => handleSelectAsset(asset)}
-                                                className={`aspect-square rounded-xl overflow-hidden cursor-pointer transition-all hover:scale-105 group relative ${isDark ? 'bg-neutral-900' : 'bg-neutral-100'}`}
+                                                className={`aspect-square rounded-xl overflow-hidden cursor-pointer transition-all group relative ${isDark ? 'bg-neutral-900' : 'bg-neutral-100'}`}
                                             >
                                                 {activeTab === 'images' ? (
                                                     <img

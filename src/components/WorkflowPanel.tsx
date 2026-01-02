@@ -222,7 +222,13 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-4">
+                <div
+                    className="flex-1 overflow-y-auto p-4"
+                    style={{
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: isDark ? '#525252 #171717' : '#d4d4d4 #fafafa'
+                    }}
+                >
                     {loading && activeTab === 'my' ? (
                         <div className="flex items-center justify-center h-40">
                             <Loader2 className="animate-spin text-neutral-500" size={24} />
@@ -239,7 +245,7 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                                     <div
                                         key={workflow.id}
                                         onClick={() => onLoadWorkflow(workflow.id)}
-                                        className={`rounded-xl overflow-hidden cursor-pointer transition-all hover:scale-105 group ${workflow.id === currentWorkflowId
+                                        className={`rounded-xl overflow-hidden cursor-pointer transition-all group ${workflow.id === currentWorkflowId
                                             ? 'ring-2 ring-blue-500'
                                             : ''
                                             }`}
@@ -283,9 +289,9 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                                             </div>
                                         </div>
                                         {/* Info */}
-                                        <div className="p-3 bg-neutral-900/50">
-                                            <h3 className="font-medium text-white text-sm truncate">{workflow.title || 'Untitled'}</h3>
-                                            <p className="text-xs text-neutral-500 mt-0.5">
+                                        <div className={`p-3 ${isDark ? 'bg-neutral-900/50' : 'bg-neutral-100/90'}`}>
+                                            <h3 className={`font-medium text-sm truncate ${isDark ? 'text-white' : 'text-neutral-900'}`}>{workflow.title || 'Untitled'}</h3>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>
                                                 {workflow.nodeCount} nodes
                                             </p>
                                         </div>
@@ -307,7 +313,7 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                                     <div
                                         key={workflow.id}
                                         onClick={() => onLoadWorkflow(`public:${workflow.id}`)}
-                                        className="rounded-xl overflow-hidden cursor-pointer transition-all hover:scale-105 group"
+                                        className="rounded-xl overflow-hidden cursor-pointer transition-all group"
                                     >
                                         {/* Thumbnail */}
                                         <div className="aspect-[4/3] bg-gradient-to-br from-green-800/30 to-emerald-900/30 flex items-center justify-center relative overflow-hidden">
@@ -329,9 +335,9 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                                             </div>
                                         </div>
                                         {/* Info */}
-                                        <div className="p-3 bg-neutral-900/50">
-                                            <h3 className="font-medium text-white text-sm truncate">{workflow.title || 'Untitled'}</h3>
-                                            <p className="text-xs text-neutral-500 mt-0.5">
+                                        <div className={`p-3 ${isDark ? 'bg-neutral-900/50' : 'bg-neutral-100/90'}`}>
+                                            <h3 className={`font-medium text-sm truncate ${isDark ? 'text-white' : 'text-neutral-900'}`}>{workflow.title || 'Untitled'}</h3>
+                                            <p className={`text-xs mt-0.5 ${isDark ? 'text-neutral-500' : 'text-neutral-600'}`}>
                                                 {workflow.description || `${workflow.nodeCount} nodes`}
                                             </p>
                                         </div>
