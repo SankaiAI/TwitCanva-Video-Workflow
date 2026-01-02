@@ -5,8 +5,9 @@
  * Shows list of workflows with options to load, delete, or edit cover.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Trash2, FileText, Loader2, Maximize2, Pencil, Check } from 'lucide-react';
+import { LazyImage } from './LazyImage';
 
 interface WorkflowSummary {
     id: string;
@@ -52,6 +53,11 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
     const [editingCoverFor, setEditingCoverFor] = useState<string | null>(null);
     const [coverAssets, setCoverAssets] = useState<AssetMetadata[]>([]);
     const [loadingAssets, setLoadingAssets] = useState(false);
+
+    // Pagination state for cover image modal
+    const COVERS_PER_PAGE = 9;
+    const [visibleCoverCount, setVisibleCoverCount] = useState(COVERS_PER_PAGE);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
 
     // Theme helper
     const isDark = canvasTheme === 'dark';
@@ -105,10 +111,36 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
         setDeleteConfirm(null);
     };
 
+    // Load more covers callback for infinite scroll
+    const loadMoreCovers = useCallback(() => {
+        setVisibleCoverCount(prev => Math.min(prev + COVERS_PER_PAGE, coverAssets.length));
+    }, [coverAssets.length]);
+
+    // Intersection Observer effect for infinite scroll
+    useEffect(() => {
+        if (!editingCoverFor || loadingAssets) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && visibleCoverCount < coverAssets.length) {
+                    loadMoreCovers();
+                }
+            },
+            { threshold: 0.1, rootMargin: '100px' }
+        );
+
+        if (loadMoreRef.current) {
+            observer.observe(loadMoreRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [editingCoverFor, loadingAssets, visibleCoverCount, coverAssets.length, loadMoreCovers]);
+
     const openCoverEditor = async (workflowId: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setEditingCoverFor(workflowId);
         setLoadingAssets(true);
+        setVisibleCoverCount(COVERS_PER_PAGE); // Reset pagination
 
         try {
             const response = await fetch('http://localhost:3001/api/assets/images');
@@ -219,6 +251,7 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                                                     src={workflow.coverUrl}
                                                     alt={workflow.title}
                                                     className="w-full h-full object-cover"
+                                                    loading="lazy"
                                                 />
                                             ) : (
                                                 <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
@@ -283,6 +316,7 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                                                     src={workflow.coverUrl}
                                                     alt={workflow.title}
                                                     className="w-full h-full object-cover"
+                                                    loading="lazy"
                                                 />
                                             ) : (
                                                 <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-600/20 flex items-center justify-center">
@@ -359,22 +393,35 @@ export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 gap-3 overflow-y-auto flex-1">
-                                {coverAssets.map(asset => (
+                                {coverAssets.slice(0, visibleCoverCount).map(asset => (
                                     <button
                                         key={asset.id}
                                         onClick={() => selectCover(asset.url)}
                                         className="h-32 w-full rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all relative group bg-neutral-900"
                                     >
-                                        <img
+                                        <LazyImage
                                             src={`http://localhost:3001${asset.url}`}
                                             alt="Cover option"
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full"
+                                            placeholderClassName="rounded-lg"
+                                            rootMargin="100px"
                                         />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                                             <Check size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
                                     </button>
                                 ))}
+
+                                {/* Load more sentinel - triggers infinite scroll */}
+                                {visibleCoverCount < coverAssets.length && (
+                                    <div
+                                        ref={loadMoreRef}
+                                        className="col-span-3 flex items-center justify-center py-4"
+                                    >
+                                        <Loader2 className="animate-spin text-neutral-500" size={20} />
+                                        <span className="ml-2 text-neutral-500 text-sm">Loading more...</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
