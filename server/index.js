@@ -1,6 +1,9 @@
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import path from 'path';
@@ -9,9 +12,8 @@ import crypto from 'crypto';
 import { spawn } from 'child_process';
 import chatAgent from './agent/index.js';
 import generationRoutes from './routes/generation.js';
+import twitterRoutes from './routes/twitter.js';
 import { processTikTokVideo, isValidTikTokUrl } from './tools/tiktok.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,6 +108,7 @@ app.locals.OPENAI_API_KEY = OPENAI_API_KEY;
 app.locals.FAL_API_KEY = FAL_API_KEY;
 app.locals.IMAGES_DIR = IMAGES_DIR;
 app.locals.VIDEOS_DIR = VIDEOS_DIR;
+app.locals.LIBRARY_DIR = LIBRARY_DIR;
 
 // ============================================================================
 // WORKFLOW SANITIZATION HELPERS
@@ -215,8 +218,10 @@ function sanitizeWorkflowNodes(nodes) {
 }
 
 // Mount generation routes (image and video generation)
-
 app.use('/api', generationRoutes);
+
+// Mount Twitter routes (Post to X feature)
+app.use('/api/twitter', twitterRoutes);
 
 // NOTE: Old Kling helpers removed - now in server/services/kling.js
 

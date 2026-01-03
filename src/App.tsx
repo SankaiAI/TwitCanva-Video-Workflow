@@ -44,6 +44,7 @@ import { ImageEditorModal } from './components/modals/ImageEditorModal';
 import { VideoEditorModal } from './components/modals/VideoEditorModal';
 import { CreateAssetModal } from './components/modals/CreateAssetModal';
 import { TikTokImportModal } from './components/modals/TikTokImportModal';
+import { TwitterPostModal } from './components/modals/TwitterPostModal';
 import { AssetLibraryPanel } from './components/AssetLibraryPanel';
 import { useTikTokImport } from './hooks/useTikTokImport';
 
@@ -395,6 +396,22 @@ export default function App() {
     setSelectedNodeIds,
     viewport
   });
+
+  // Twitter Post Modal State
+  const [twitterModal, setTwitterModal] = useState<{
+    isOpen: boolean;
+    mediaUrl: string | null;
+    mediaType: 'image' | 'video';
+  }>({ isOpen: false, mediaUrl: null, mediaType: 'image' });
+
+  const handlePostToX = React.useCallback((nodeId: string, mediaUrl: string, mediaType: 'image' | 'video') => {
+    console.log('[Twitter] Opening post modal for:', nodeId, mediaUrl, mediaType);
+    setTwitterModal({
+      isOpen: true,
+      mediaUrl,
+      mediaType
+    });
+  }, []);
 
   // Context menu handlers
   const {
@@ -753,6 +770,14 @@ export default function App() {
         onVideoImported={handleTikTokVideoImported}
       />
 
+      {/* Twitter Post Modal */}
+      <TwitterPostModal
+        isOpen={twitterModal.isOpen}
+        onClose={() => setTwitterModal(prev => ({ ...prev, isOpen: false }))}
+        mediaUrl={twitterModal.mediaUrl}
+        mediaType={twitterModal.mediaType}
+      />
+
       {/* Agent Chat */}
       <ChatBubble onClick={toggleChat} isOpen={isChatOpen} />
       <ChatPanel isOpen={isChatOpen} onClose={closeChat} isDraggingNode={isDraggingNodeToChat} canvasTheme={canvasTheme} />
@@ -895,6 +920,7 @@ export default function App() {
                 onMouseEnter={() => setCanvasHoveredNodeId(node.id)}
                 onMouseLeave={() => setCanvasHoveredNodeId(null)}
                 canvasTheme={canvasTheme}
+                onPostToX={handlePostToX}
               />
             ))}
           </div>

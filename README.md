@@ -17,6 +17,7 @@ A modern, AI-powered canvas application for generating and manipulating images a
 - **🎬 Multi-Model Video Generation** - Veo 3.1, Kling V1-V2.6, Hailuo 2.3/O2 for videos
 - **💃 Motion Control** - Transfer motion from reference videos to character images (Kling V2.6 via Fal.ai)
 - **📥 TikTok Import** - Download TikTok videos without watermark for use as motion references
+- **📤 Post to X** - Share generated images/videos directly to Twitter/X with one click
 - **🖼️ Image-to-Image** - Use reference images for generation
 - **📽️ Frame-to-Frame Video** - Animate between start and end frames
 - **🔗 Smart Node Connections** - Type-aware validation (IMAGE→VIDEO, TEXT→IMAGE, etc.)
@@ -97,6 +98,16 @@ This is not the perfect one, but it is a good start. Give me a try, and let me k
    
    # Get from https://fal.ai/dashboard/keys (for Kling V2.6 Motion Control)
    FAL_API_KEY=your_fal_api_key_here
+   
+   # Optional: X (Twitter) Post Feature - Get from https://developer.twitter.com/en/portal
+   # See docs/post-to-x.md for detailed setup instructions
+   TWITTER_CLIENT_ID=your_twitter_client_id
+   TWITTER_CLIENT_SECRET=your_twitter_client_secret
+   TWITTER_API_KEY=your_twitter_api_key
+   TWITTER_API_SECRET=your_twitter_api_secret
+   TWITTER_ACCESS_TOKEN=your_twitter_access_token
+   TWITTER_ACCESS_TOKEN_SECRET=your_twitter_access_token_secret
+   TWITTER_CALLBACK_URL=http://127.0.0.1:3001/api/twitter/callback
    ```
    
    > ⚠️ **Security**: API keys are stored server-side only and never exposed to the client.
@@ -169,13 +180,15 @@ TwitCanva/
 ├── server/                       # Backend server
 │   ├── index.js                  # Express server entry
 │   ├── routes/                   # API route handlers
-│   │   └── generation.js         # Image/video generation endpoints
+│   │   ├── generation.js         # Image/video generation endpoints
+│   │   └── twitter.js            # X (Twitter) posting endpoints
 │   ├── services/                 # External API integrations
 │   │   ├── gemini.js             # Google Gemini/Veo service
 │   │   ├── kling.js              # Kling AI service (V1-V2.5)
 │   │   ├── fal.js                # Fal.ai service (Kling V2.6 Motion Control)
 │   │   ├── hailuo.js             # Hailuo AI (MiniMax) service
-│   │   └── openai.js             # OpenAI GPT Image service
+│   │   ├── openai.js             # OpenAI GPT Image service
+│   │   └── twitter.js            # X (Twitter) OAuth & posting service
 │   ├── tools/                    # Utility tools (non-AI)
 │   │   └── tiktok.js             # TikTok video downloader
 │   ├── utils/                    # Utility functions
@@ -276,6 +289,18 @@ Download TikTok videos without watermark to use as **motion references** for the
 > **Tip**: The imported video will appear in your Video History and can be used as a motion reference when generating videos with Kling V2.6 Motion Control. This allows you to transfer dance moves, gestures, or any motion from TikTok videos to your AI-generated characters!
 
 > **Note**: First and last frames are automatically trimmed to remove TikTok watermarks (requires ffmpeg installed on your system).
+
+#### Post to X (Twitter)
+
+Share your generated images and videos directly to Twitter/X:
+
+1. Generate an image or video using a node
+2. Hover over the media and click the **X icon** button
+3. Sign in with your X account (first time only)
+4. Add an optional caption
+5. Click **Post** to share!
+
+> **Setup Required**: You need to configure Twitter API credentials in your `.env` file. See [Post to X Documentation](docs/post-to-x.md) for detailed setup instructions.
 
 ## 🔧 Available Scripts
 

@@ -29,6 +29,8 @@ interface NodeContentProps {
     onImageToImage?: (nodeId: string) => void;
     onImageToVideo?: (nodeId: string) => void;
     onUpdate?: (nodeId: string, updates: Partial<NodeData>) => void;
+    // Social sharing
+    onPostToX?: (nodeId: string, mediaUrl: string, mediaType: 'image' | 'video') => void;
 }
 
 export const NodeContent: React.FC<NodeContentProps> = ({
@@ -48,7 +50,8 @@ export const NodeContent: React.FC<NodeContentProps> = ({
     onTextToImage,
     onImageToImage,
     onImageToVideo,
-    onUpdate
+    onUpdate,
+    onPostToX
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -152,6 +155,23 @@ export const NodeContent: React.FC<NodeContentProps> = ({
                         >
                             <Maximize2 size={14} />
                         </button>
+                        {/* Post to X Button */}
+                        {onPostToX && data.resultUrl && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const mediaType = data.type === NodeType.VIDEO ? 'video' : 'image';
+                                    onPostToX(data.id, data.resultUrl!, mediaType);
+                                }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className="p-1.5 bg-black/50 hover:bg-black/80 rounded-lg text-white backdrop-blur-md"
+                                title="Post to X"
+                            >
+                                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                </svg>
+                            </button>
+                        )}
                         {/* Download Button */}
                         <button
                             onClick={(e) => {

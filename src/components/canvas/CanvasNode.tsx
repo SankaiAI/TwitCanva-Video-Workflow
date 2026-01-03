@@ -43,6 +43,8 @@ interface CanvasNodeProps {
   onMouseLeave?: () => void;
   // Theme
   canvasTheme?: 'dark' | 'light';
+  // Social sharing
+  onPostToX?: (nodeId: string, mediaUrl: string, mediaType: 'image' | 'video') => void;
 }
 
 export const CanvasNode: React.FC<CanvasNodeProps> = ({
@@ -72,7 +74,8 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   zoom,
   onMouseEnter,
   onMouseLeave,
-  canvasTheme = 'dark'
+  canvasTheme = 'dark',
+  onPostToX
 }) => {
   // ============================================================================
   // STATE
@@ -390,6 +393,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
             onImageToImage={onImageToImage}
             onImageToVideo={onImageToVideo}
             onUpdate={onUpdate}
+            onPostToX={onPostToX}
           />
         </div>
 
