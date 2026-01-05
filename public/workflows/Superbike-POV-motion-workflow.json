@@ -1,0 +1,86 @@
+{
+  "id": "c1debef0-f657-4184-a93d-ab2e2172d86e",
+  "title": "Superbike Motion",
+  "nodes": [
+    {
+      "id": "6cbfc9e2-fb92-4818-85d3-74bf4e658e05",
+      "type": "Image",
+      "x": 783,
+      "y": 429,
+      "prompt": "Handlebar-mounted POV camera on a superbike at extreme speed through a narrow city street. The bike rockets forward, snapping left and right through traffic gaps. Buildings stretch into streaks, road texture blurs, violent vibration from acceleration. Heavy motion blur on environment, sharp focus on handlebars and road center.",
+      "status": "success",
+      "model": "Banana Pro",
+      "aspectRatio": "16:9",
+      "resolution": "4K",
+      "parentIds": [],
+      "imageModel": "gemini-pro",
+      "generationStartTime": 1767576621401,
+      "resultUrl": "/library/images/img_1767576658586_tbom150m3.png?t=1767576658620",
+      "resultAspectRatio": "5504/3072"
+    },
+    {
+      "id": "ebe67d87-136a-416f-94a1-87a5c0d6288a",
+      "type": "Image",
+      "x": 777,
+      "y": 815,
+      "prompt": "a book called \"How to master TwitCanva\" with pure background.",
+      "status": "success",
+      "model": "Banana Pro",
+      "aspectRatio": "1:1",
+      "resolution": "4K",
+      "parentIds": [],
+      "imageModel": "gemini-pro",
+      "generationStartTime": 1767576770024,
+      "resultUrl": "/library/images/img_1767576803567_viqtyvzyw.png?t=1767576803589",
+      "resultAspectRatio": "4096/4096"
+    },
+    {
+      "id": "8cabf6d8-533f-421b-b6b9-ced9f4e0d033",
+      "type": "Image",
+      "x": 1480,
+      "y": 596,
+      "prompt": "please add the book to the left hand of the man's on the superbike. Keep other elements the same.",
+      "status": "success",
+      "model": "Banana Pro",
+      "aspectRatio": "16:9",
+      "resolution": "4K",
+      "parentIds": [
+        "6cbfc9e2-fb92-4818-85d3-74bf4e658e05",
+        "ebe67d87-136a-416f-94a1-87a5c0d6288a"
+      ],
+      "imageModel": "gemini-pro",
+      "generationStartTime": 1767576865967,
+      "resultUrl": "/library/images/img_1767576919877_1de7g2i3y.png?t=1767576919902",
+      "resultAspectRatio": "5504/3072"
+    },
+    {
+      "id": "a834ae8b-a501-447e-8187-d149f79b36fb",
+      "type": "Video",
+      "x": 2071,
+      "y": 593,
+      "prompt": "Handlebar-mounted POV camera on a superbike at extreme speed through a narrow city street. The bike rockets forward, snapping left and right through traffic gaps. Buildings stretch into streaks, road texture blurs, violent vibration from acceleration. Heavy motion blur on environment, sharp focus on handlebars and road center. The left hand holding the book sometimes raises it closer to the  POV camera.",
+      "status": "success",
+      "model": "Banana Pro",
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "parentIds": [
+        "8cabf6d8-533f-421b-b6b9-ced9f4e0d033"
+      ],
+      "videoModel": "kling-v2-6",
+      "videoDuration": 10,
+      "generationStartTime": 1767579585234,
+      "resultUrl": "/library/videos/vid_1767579735877_nchf1za7t.mp4?t=1767579735931",
+      "resultAspectRatio": "1928/1072",
+      "lastFrame": "/library/images/wf_1767580162408_pcj1nm.png"
+    }
+  ],
+  "groups": [],
+  "viewport": {
+    "x": -730,
+    "y": -98,
+    "zoom": 1
+  },
+  "updatedAt": "2026-01-05T02:29:22.408Z",
+  "createdAt": "2026-01-05T02:29:22.408Z",
+  "coverUrl": "http://localhost:3001/library/images/img_1767576919877_1de7g2i3y.png"
+}
