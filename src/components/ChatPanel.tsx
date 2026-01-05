@@ -100,7 +100,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         e.preventDefault();
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragOver(false);
 
@@ -110,10 +110,34 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             try {
                 const { nodeId, url, type } = JSON.parse(nodeData);
                 if (url && (type === 'image' || type === 'video')) {
+                    // Convert URL to base64 for API consumption
+                    let base64Data: string | undefined;
+
+                    if (type === 'image') {
+                        try {
+                            // Fetch the image and convert to base64
+                            const response = await fetch(url);
+                            const blob = await response.blob();
+                            base64Data = await new Promise<string>((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    const result = reader.result as string;
+                                    // Extract just the base64 part (remove data:image/...;base64, prefix)
+                                    const base64 = result.split(',')[1];
+                                    resolve(base64);
+                                };
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            });
+                        } catch (err) {
+                            console.error('Failed to convert image to base64:', err);
+                        }
+                    }
+
                     // Add to attachments if not already present
                     setAttachedMedia(prev => {
                         if (prev.some(m => m.nodeId === nodeId)) return prev;
-                        return [...prev, { type, url, nodeId, base64: url }];
+                        return [...prev, { type, url, nodeId, base64: base64Data }];
                     });
                 }
             } catch (err) {
@@ -121,6 +145,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             }
         }
     };
+
 
     const removeAttachment = (nodeId: string) => {
         setAttachedMedia(prev => prev.filter(m => m.nodeId !== nodeId));
