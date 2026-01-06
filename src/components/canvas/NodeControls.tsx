@@ -11,6 +11,7 @@ import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertica
 import { NodeData, NodeStatus, NodeType } from '../../types';
 import { OpenAIIcon, GoogleIcon, KlingIcon, HailuoIcon } from '../icons/BrandIcons';
 import { useFaceDetection } from '../../hooks/useFaceDetection';
+import { ChangeAnglePanel } from './ChangeAnglePanel';
 
 interface NodeControlsProps {
     data: NodeData;
@@ -20,6 +21,7 @@ interface NodeControlsProps {
     connectedImageNodes?: { id: string; url: string; type?: NodeType }[]; // Connected parent nodes
     onUpdate: (id: string, updates: Partial<NodeData>) => void;
     onGenerate: (id: string) => void;
+    onChangeAngleGenerate?: (nodeId: string) => void;
     onSelect: (id: string) => void;
     zoom: number;
     canvasTheme?: 'dark' | 'light';
@@ -137,6 +139,57 @@ const IMAGE_MODELS = [
     },
 ];
 
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Build a prompt that includes angle transformation instructions
+ * for generating the image from a different viewing angle
+ */
+function buildAnglePrompt(
+    basePrompt: string,
+    settings: { rotation: number; tilt: number; scale: number; wideAngle: boolean }
+): string {
+    const parts: string[] = [];
+
+    // Base instruction
+    parts.push('Generate this same image from a different camera angle.');
+
+    // Rotation (horizontal)
+    if (settings.rotation !== 0) {
+        const direction = settings.rotation > 0 ? 'right' : 'left';
+        parts.push(`The camera has rotated ${Math.abs(settings.rotation)}° to the ${direction}.`);
+    }
+
+    // Tilt (vertical)
+    if (settings.tilt !== 0) {
+        const direction = settings.tilt > 0 ? 'upward' : 'downward';
+        parts.push(`The camera has tilted ${Math.abs(settings.tilt)}° ${direction}.`);
+    }
+
+    // Scale
+    if (settings.scale !== 0) {
+        if (settings.scale > 50) {
+            parts.push('The camera is positioned closer to the subject.');
+        } else if (settings.scale < 50 && settings.scale > 0) {
+            parts.push('The camera is positioned slightly closer.');
+        }
+    }
+
+    // Wide-angle lens
+    if (settings.wideAngle) {
+        parts.push('Use a wide-angle lens perspective with visible distortion at the edges.');
+    }
+
+    // Add original prompt context if provided
+    if (basePrompt.trim()) {
+        parts.push(`Original scene description: ${basePrompt}`);
+    }
+
+    return parts.join(' ');
+}
+
 const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     data,
     inputUrl,
@@ -145,6 +198,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     connectedImageNodes = [],
     onUpdate,
     onGenerate,
+    onChangeAngleGenerate,
     onSelect,
     zoom,
     canvasTheme = 'dark'
@@ -479,6 +533,38 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
 
     // Theme helper
     const isDark = canvasTheme === 'dark';
+
+    // Handle angle mode generate - creates a new connected node
+    const handleAngleGenerate = () => {
+        if (onChangeAngleGenerate) {
+            onChangeAngleGenerate(data.id);
+        }
+    };
+
+    // If in angle mode for Image nodes with result, show ChangeAnglePanel
+    if (data.angleMode && data.type === NodeType.IMAGE && isSuccess && data.resultUrl) {
+        return (
+            <div
+                style={{
+                    transform: `scale(${localScale})`,
+                    transformOrigin: 'top center',
+                    transition: 'transform 0.1s ease-out'
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onSelect(data.id)}
+            >
+                <ChangeAnglePanel
+                    imageUrl={data.resultUrl}
+                    settings={data.angleSettings || { rotation: 0, tilt: 0, scale: 0, wideAngle: false }}
+                    onSettingsChange={(settings) => onUpdate(data.id, { angleSettings: settings })}
+                    onClose={() => onUpdate(data.id, { angleMode: false })}
+                    onGenerate={handleAngleGenerate}
+                    isLoading={isLoading}
+                    canvasTheme={canvasTheme}
+                />
+            </div>
+        );
+    }
 
     return (
         <div

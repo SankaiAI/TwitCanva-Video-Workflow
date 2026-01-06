@@ -332,8 +332,9 @@ export default function App() {
   // Image node handlers
   const {
     handleImageToImage,
-    handleImageToVideo
-  } = useImageNodeHandlers({ nodes, setNodes, setSelectedNodeIds });
+    handleImageToVideo,
+    handleChangeAngleGenerate
+  } = useImageNodeHandlers({ nodes, setNodes, setSelectedNodeIds, onGenerateNode: handleGenerate });
 
   // Asset handlers (create asset modal)
   const {
@@ -917,6 +918,7 @@ export default function App() {
                 onTextToImage={handleTextToImage}
                 onImageToImage={handleImageToImage}
                 onImageToVideo={handleImageToVideo}
+                onChangeAngleGenerate={handleChangeAngleGenerate}
                 zoom={viewport.zoom}
                 onMouseEnter={() => setCanvasHoveredNodeId(node.id)}
                 onMouseLeave={() => setCanvasHoveredNodeId(null)}

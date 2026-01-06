@@ -37,6 +37,7 @@ interface CanvasNodeProps {
   // Image node callbacks
   onImageToImage?: (nodeId: string) => void;
   onImageToVideo?: (nodeId: string) => void;
+  onChangeAngleGenerate?: (nodeId: string) => void;
   zoom: number;
   // Mouse event callbacks for chat panel drag functionality
   onMouseEnter?: () => void;
@@ -71,6 +72,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
   onTextToImage,
   onImageToImage,
   onImageToVideo,
+  onChangeAngleGenerate,
   zoom,
   onMouseEnter,
   onMouseLeave,
@@ -335,7 +337,33 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
       <NodeConnectors nodeId={data.id} onConnectorDown={onConnectorDown} canvasTheme={canvasTheme} />
 
       {/* Relative wrapper for the Image Card to allow absolute positioning of controls below it */}
-      <div className="relative">
+      <div className="relative group/nodecard">
+        {/* Change Angle Toolbar - Appears above the card for Image nodes on hover */}
+        {data.type === NodeType.IMAGE && isSuccess && data.resultUrl && (
+          <div className="absolute -top-12 left-0 right-0 flex justify-center opacity-0 group-hover/nodecard:opacity-100 transition-opacity z-20">
+            <div className="flex items-center gap-1 px-2 py-1.5 bg-neutral-900/95 rounded-full border border-neutral-700 shadow-xl backdrop-blur-md">
+              <button
+                onClick={() => onUpdate(data.id, {
+                  angleMode: !data.angleMode,
+                  angleSettings: data.angleSettings || { rotation: 0, tilt: 0, scale: 0, wideAngle: false }
+                })}
+                onPointerDown={(e) => e.stopPropagation()}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${data.angleMode
+                  ? 'bg-blue-500 text-white'
+                  : 'text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                  }`}
+              >
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+                Change Angle
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Main Node Card - Video nodes are wider to fit more controls */}
         <div
           className={`relative ${data.type === NodeType.VIDEO ? 'w-[385px]' : 'w-[365px]'} rounded-2xl border transition-all duration-300 flex flex-col shadow-2xl ${isDark ? 'bg-[#0f0f0f]' : 'bg-white'} ${selected ? 'border-blue-500/50 ring-1 ring-blue-500/30' : isDark ? 'border-neutral-800' : 'border-neutral-200'}`}
@@ -408,6 +436,7 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
               connectedImageNodes={connectedImageNodes}
               onUpdate={onUpdate}
               onGenerate={onGenerate}
+              onChangeAngleGenerate={onChangeAngleGenerate}
               onSelect={onSelect}
               zoom={zoom}
               canvasTheme={canvasTheme}

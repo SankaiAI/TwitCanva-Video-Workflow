@@ -82,6 +82,15 @@ export interface NodeData {
   editorCanvasData?: string; // Base64 brush/eraser canvas data
   editorCanvasSize?: { width: number; height: number }; // Size of the canvas when elements were saved (for scaling)
   editorBackgroundUrl?: string; // Clean background image URL (without elements) for re-editing
+
+  // Change Angle mode (Image nodes only)
+  angleMode?: boolean; // Whether the node is in angle editing mode
+  angleSettings?: {
+    rotation: number;  // Horizontal rotation in degrees (-180 to 180)
+    tilt: number;      // Vertical tilt in degrees (-90 to 90)
+    scale: number;     // Scale factor (0 to 100)
+    wideAngle: boolean; // Whether to use wide-angle lens perspective
+  };
 }
 
 export interface ContextMenuState {
