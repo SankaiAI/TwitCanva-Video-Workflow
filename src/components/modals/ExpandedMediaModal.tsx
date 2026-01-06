@@ -48,8 +48,8 @@ export const ExpandedMediaModal: React.FC<ExpandedMediaModalProps> = ({
 
     // --- Wheel handler to zoom in/out ---
     const handleWheel = useCallback((e: React.WheelEvent) => {
-        // Prevent default browser zoom behavior
-        e.preventDefault();
+        // Note: preventDefault is handled by the native event listener with { passive: false }
+        // React synthetic wheel events are passive by default, so we can't call preventDefault here
         e.stopPropagation();
 
         // Calculate new zoom level
