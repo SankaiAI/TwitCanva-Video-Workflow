@@ -1,0 +1,202 @@
+{
+    "version": "1.0.0",
+    "lastUpdated": "2024-01-13",
+    "architectures": {
+        "sd15": {
+            "name": "Stable Diffusion 1.5",
+            "pipeline": "StableDiffusionPipeline",
+            "type": "image",
+            "detection": {
+                "sizeRange": [
+                    1500000000,
+                    4500000000
+                ],
+                "patterns": [
+                    "*sd15*",
+                    "*sd1.5*",
+                    "*sd_1.5*",
+                    "*v1-5*",
+                    "*1.5*"
+                ]
+            },
+            "defaults": {
+                "steps": 30,
+                "guidance": 7.5,
+                "scheduler": "DPMSolverMultistep",
+                "width": 512,
+                "height": 512
+            },
+            "resolutions": {
+                "1:1": [
+                    512,
+                    512
+                ],
+                "4:3": [
+                    512,
+                    384
+                ],
+                "3:4": [
+                    384,
+                    512
+                ],
+                "16:9": [
+                    512,
+                    288
+                ],
+                "9:16": [
+                    288,
+                    512
+                ]
+            },
+            "supported": true
+        },
+        "sdxl": {
+            "name": "Stable Diffusion XL",
+            "pipeline": "StableDiffusionXLPipeline",
+            "type": "image",
+            "detection": {
+                "sizeRange": [
+                    6000000000,
+                    8000000000
+                ],
+                "patterns": [
+                    "*sdxl*",
+                    "*xl*",
+                    "*SDXL*"
+                ]
+            },
+            "defaults": {
+                "steps": 30,
+                "guidance": 7.0,
+                "scheduler": "DPMSolverMultistep",
+                "width": 1024,
+                "height": 1024
+            },
+            "resolutions": {
+                "1:1": [
+                    1024,
+                    1024
+                ],
+                "4:3": [
+                    1024,
+                    768
+                ],
+                "3:4": [
+                    768,
+                    1024
+                ],
+                "16:9": [
+                    1024,
+                    576
+                ],
+                "9:16": [
+                    576,
+                    1024
+                ]
+            },
+            "supported": true
+        },
+        "flux": {
+            "name": "Flux",
+            "pipeline": "FluxPipeline",
+            "type": "image",
+            "detection": {
+                "sizeRange": [
+                    11000000000,
+                    25000000000
+                ],
+                "patterns": [
+                    "*flux*",
+                    "*FLUX*"
+                ]
+            },
+            "defaults": {
+                "steps": 28,
+                "guidance": 3.5,
+                "scheduler": "FlowMatchEulerDiscrete",
+                "width": 1024,
+                "height": 1024
+            },
+            "resolutions": {
+                "1:1": [
+                    1024,
+                    1024
+                ],
+                "4:3": [
+                    1024,
+                    768
+                ],
+                "3:4": [
+                    768,
+                    1024
+                ]
+            },
+            "supported": false,
+            "note": "Requires diffusers>=0.30.0 and transformers for T5"
+        },
+        "animatediff": {
+            "name": "AnimateDiff",
+            "pipeline": "AnimateDiffPipeline",
+            "type": "video",
+            "detection": {
+                "sizeRange": [
+                    1500000000,
+                    3000000000
+                ],
+                "patterns": [
+                    "*animatediff*",
+                    "*animate*",
+                    "*motion*"
+                ]
+            },
+            "defaults": {
+                "steps": 25,
+                "guidance": 7.5,
+                "frames": 16,
+                "fps": 8,
+                "width": 512,
+                "height": 512
+            },
+            "supported": false,
+            "note": "Requires motion module + base SD model"
+        },
+        "svd": {
+            "name": "Stable Video Diffusion",
+            "pipeline": "StableVideoDiffusionPipeline",
+            "type": "video",
+            "detection": {
+                "sizeRange": [
+                    8000000000,
+                    12000000000
+                ],
+                "patterns": [
+                    "*svd*",
+                    "*video*diffusion*"
+                ]
+            },
+            "defaults": {
+                "steps": 25,
+                "frames": 14,
+                "fps": 7,
+                "motionBucketId": 127
+            },
+            "supported": false,
+            "note": "Image-to-video only, requires input image"
+        }
+    },
+    "defaultArchitecture": "sd15",
+    "detectionOrder": [
+        "flux",
+        "sdxl",
+        "svd",
+        "animatediff",
+        "sd15"
+    ],
+    "fileExtensions": [
+        ".safetensors",
+        ".ckpt",
+        ".pt",
+        ".bin",
+        ".pth"
+    ]
+}

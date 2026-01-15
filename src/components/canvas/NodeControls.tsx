@@ -7,11 +7,12 @@
  */
 
 import React, { useState, useRef, useEffect, memo } from 'react';
-import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock, Expand, Shrink, Monitor, Crop } from 'lucide-react';
+import { Sparkles, Banana, Settings2, Check, ChevronDown, ChevronUp, GripVertical, Image as ImageIcon, Film, Clock, Expand, Shrink, Monitor, Crop, HardDrive } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 import { OpenAIIcon, GoogleIcon, KlingIcon, HailuoIcon } from '../icons/BrandIcons';
 import { useFaceDetection } from '../../hooks/useFaceDetection';
 import { ChangeAnglePanel } from './ChangeAnglePanel';
+import { LocalModel, getLocalModels } from '../../services/localModelService';
 
 interface NodeControlsProps {
     data: NodeData;
@@ -219,6 +220,33 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
 
+    // Local model state for LOCAL_IMAGE_MODEL and LOCAL_VIDEO_MODEL nodes
+    const [localModels, setLocalModels] = useState<LocalModel[]>([]);
+    const [isLoadingLocalModels, setIsLoadingLocalModels] = useState(false);
+    const isLocalModelNode = data.type === NodeType.LOCAL_IMAGE_MODEL || data.type === NodeType.LOCAL_VIDEO_MODEL;
+
+    // Fetch local models when node is a local model type
+    useEffect(() => {
+        if (!isLocalModelNode) return;
+
+        const fetchModels = async () => {
+            setIsLoadingLocalModels(true);
+            try {
+                const models = await getLocalModels();
+                // Filter based on node type
+                const filtered = data.type === NodeType.LOCAL_VIDEO_MODEL
+                    ? models.filter(m => m.type === 'video')
+                    : models.filter(m => m.type === 'image' || m.type === 'lora' || m.type === 'controlnet');
+                setLocalModels(filtered);
+            } catch (error) {
+                console.error('Error fetching local models:', error);
+            } finally {
+                setIsLoadingLocalModels(false);
+            }
+        };
+        fetchModels();
+    }, [isLocalModelNode, data.type]);
+
     // Face detection hook for Kling V1.5 Face mode
     const { detectFaces, isModelLoaded: isFaceModelLoaded } = useFaceDetection();
 
@@ -359,16 +387,17 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
         onUpdate(data.id, { frameInputs: updatedFrameInputs });
     };
 
-    const currentSizeLabel = data.type === NodeType.VIDEO
+    const currentSizeLabel = (data.type === NodeType.VIDEO || data.type === NodeType.LOCAL_VIDEO_MODEL)
         ? (data.resolution || "Auto")
         : (data.aspectRatio || "Auto");
 
     // For image nodes, use model-specific aspect ratios
     const currentImageModelForRatios = IMAGE_MODELS.find(m => m.id === data.imageModel) || IMAGE_MODELS[0];
-    const sizeOptions = data.type === NodeType.VIDEO
+    const sizeOptions = (data.type === NodeType.VIDEO || data.type === NodeType.LOCAL_VIDEO_MODEL)
         ? VIDEO_RESOLUTIONS
         : (currentImageModelForRatios.aspectRatios || IMAGE_RATIOS);
-    const isVideoNode = data.type === NodeType.VIDEO;
+    const isVideoNode = data.type === NodeType.VIDEO || data.type === NodeType.LOCAL_VIDEO_MODEL;
+    const isImageNode = data.type === NodeType.IMAGE || data.type === NodeType.LOCAL_IMAGE_MODEL;
     const hasConnectedImages = connectedImageNodes.length > 0;
 
     // Video model selection logic
@@ -499,6 +528,20 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
         onUpdate(data.id, updates);
         setShowModelDropdown(false);
     };
+
+    // Handle local model selection
+    const handleLocalModelChange = (model: LocalModel) => {
+        onUpdate(data.id, {
+            localModelId: model.id,
+            localModelPath: model.path,
+            localModelType: model.type as NodeData['localModelType'],
+            localModelArchitecture: model.architecture
+        });
+        setShowModelDropdown(false);
+    };
+
+    // Get selected local model for display
+    const selectedLocalModel = localModels.find(m => m.id === data.localModelId);
 
     const handleResolutionSelect = (value: string) => {
         onUpdate(data.id, { resolution: value });
@@ -636,8 +679,59 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
             {/* Controls */}
             <div className="flex items-center justify-between relative">
                 <div className="flex items-center gap-2">
-                    {/* Model Selector - Image nodes use static display, Video nodes get dropdown */}
-                    {data.type === NodeType.VIDEO ? (
+                    {/* Model Selector - Local, Video, and Image nodes get different dropdowns */}
+                    {isLocalModelNode ? (
+                        <div className="relative" ref={modelDropdownRef}>
+                            <button
+                                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                                className="flex items-center gap-1.5 text-xs font-medium bg-[#252525] hover:bg-[#333] border border-neutral-700 text-white px-2.5 py-1.5 rounded-lg transition-colors"
+                            >
+                                <HardDrive size={12} className="text-purple-400" />
+                                <span className="font-medium">{selectedLocalModel?.name || 'Select Model'}</span>
+                                <ChevronDown size={12} className="ml-0.5 opacity-50" />
+                            </button>
+
+                            {/* Local Model Dropdown Menu */}
+                            {showModelDropdown && (
+                                <div className="absolute top-full mt-1 left-0 w-56 bg-[#252525] border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 max-h-64 overflow-y-auto">
+                                    {/* Header */}
+                                    <div className="px-3 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-wider bg-[#1a1a1a] border-b border-neutral-700 flex items-center gap-1.5">
+                                        <HardDrive size={10} />
+                                        Local Models
+                                    </div>
+
+                                    {isLoadingLocalModels ? (
+                                        <div className="px-3 py-4 text-xs text-neutral-500 text-center">Loading models...</div>
+                                    ) : localModels.length === 0 ? (
+                                        <div className="px-3 py-4 text-xs text-neutral-500 text-center">
+                                            <p>No models found</p>
+                                            <p className="text-[10px] mt-1">Add .safetensors files to models/</p>
+                                        </div>
+                                    ) : (
+                                        localModels.map(model => (
+                                            <button
+                                                key={model.id}
+                                                onClick={() => handleLocalModelChange(model)}
+                                                className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left hover:bg-[#333] transition-colors ${data.localModelId === model.id ? 'text-purple-400' : 'text-neutral-300'}`}
+                                            >
+                                                <span className="flex flex-col items-start gap-0.5">
+                                                    <span className="flex items-center gap-2">
+                                                        <HardDrive size={12} className="text-purple-400" />
+                                                        {model.name}
+                                                        {model.architecture && model.architecture !== 'unknown' && (
+                                                            <span className="text-[9px] px-1 py-0.5 bg-purple-600/30 text-purple-400 rounded">{model.architecture.toUpperCase()}</span>
+                                                        )}
+                                                    </span>
+                                                    <span className="text-[10px] text-neutral-500 ml-5">{model.sizeFormatted}</span>
+                                                </span>
+                                                {data.localModelId === model.id && <Check size={12} />}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ) : data.type === NodeType.VIDEO ? (
                         <div className="relative" ref={modelDropdownRef}>
                             <button
                                 onClick={() => setShowModelDropdown(!showModelDropdown)}
@@ -872,7 +966,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                             >
                                 {isVideoNode && <Monitor size={12} className="text-green-400" />}
                                 {!isVideoNode && <Crop size={12} className="text-blue-400" />}
-                                {data.type === NodeType.VIDEO && currentSizeLabel === 'Auto' ? 'Auto' : currentSizeLabel}
+                                {isVideoNode && currentSizeLabel === 'Auto' ? 'Auto' : currentSizeLabel}
                             </button>
 
                             {/* Dropdown Menu */}
@@ -882,7 +976,7 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                     onWheel={(e) => e.stopPropagation()}
                                 >
                                     <div className="px-3 py-2 text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#1f1f1f]">
-                                        {data.type === NodeType.VIDEO ? 'Resolution' : 'Aspect Ratio'}
+                                        {isVideoNode ? 'Resolution' : 'Aspect Ratio'}
                                     </div>
                                     {sizeOptions.map(option => (
                                         <button
@@ -1018,15 +1112,21 @@ const NodeControlsComponent: React.FC<NodeControlsProps> = ({
                                     onGenerate(data.id);
                                 }}
                                 disabled={isFaceModeBlocked}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-all ${isFaceModeBlocked
-                                    ? 'bg-neutral-600 cursor-not-allowed opacity-50'
-                                    : isSuccess
-                                        ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20 hover:scale-105'
-                                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 hover:scale-105'
+                                className={`group w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${isFaceModeBlocked
+                                    ? 'bg-neutral-700/50 cursor-not-allowed opacity-50'
+                                    : isDark
+                                        ? 'bg-white text-neutral-900 hover:bg-neutral-100 active:scale-95'
+                                        : 'bg-neutral-900 text-white hover:bg-neutral-800 active:scale-95'
                                     }`}
                                 title={isFaceModeBlocked ? 'Cannot generate: No face detected in reference image' : 'Generate'}
                             >
-                                <Sparkles size={14} fill="currentColor" />
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    className="w-4 h-4 transition-transform duration-200"
+                                    fill="currentColor"
+                                >
+                                    <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
                             </button>
                         );
                     })()}

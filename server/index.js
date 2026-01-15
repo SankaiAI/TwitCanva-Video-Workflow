@@ -15,6 +15,7 @@ import generationRoutes from './routes/generation.js';
 import twitterRoutes from './routes/twitter.js';
 import tiktokPostRoutes from './routes/tiktok-post.js';
 import { processTikTokVideo, isValidTikTokUrl } from './tools/tiktok.js';
+import localModelsRoutes from './routes/local-models.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -226,6 +227,9 @@ app.use('/api/twitter', twitterRoutes);
 
 // Mount TikTok routes (Post to TikTok feature)
 app.use('/api/tiktok-post', tiktokPostRoutes);
+
+// Mount Local Models routes (local open-source model discovery)
+app.use('/api/local-models', localModelsRoutes);
 
 // NOTE: Old Kling helpers removed - now in server/services/kling.js
 

@@ -6,7 +6,11 @@ export enum NodeType {
   AUDIO = 'Audio',
   IMAGE_EDITOR = 'Image Editor',
   VIDEO_EDITOR = 'Video Editor',
-  STORYBOARD = 'Storyboard Manager'
+  STORYBOARD = 'Storyboard Manager',
+  CAMERA_ANGLE = 'Camera Angle',
+  // Local open-source model nodes
+  LOCAL_IMAGE_MODEL = 'Local Image Model',
+  LOCAL_VIDEO_MODEL = 'Local Video Model'
 }
 
 export enum NodeStatus {
@@ -91,6 +95,12 @@ export interface NodeData {
     scale: number;     // Scale factor (0 to 100)
     wideAngle: boolean; // Whether to use wide-angle lens perspective
   };
+
+  // Local Model node specific
+  localModelId?: string;        // ID of the selected local model
+  localModelPath?: string;      // Absolute path to model file on disk
+  localModelType?: 'diffusion' | 'controlnet' | 'lora' | 'camera-control';
+  localModelArchitecture?: string; // Model architecture (e.g., 'sd15', 'sdxl', 'qwen')
 }
 
 export interface ContextMenuState {

@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Loader2, Maximize2, ImageIcon as ImageIcon, Film, Upload, Pencil, Video, GripVertical, Download, Expand, Shrink } from 'lucide-react';
+import { Loader2, Maximize2, ImageIcon as ImageIcon, Film, Upload, Pencil, Video, GripVertical, Download, Expand, Shrink, HardDrive } from 'lucide-react';
 import { NodeData, NodeStatus, NodeType } from '../../types';
 
 interface NodeContentProps {
@@ -60,6 +60,13 @@ export const NodeContent: React.FC<NodeContentProps> = ({
     const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSentPromptRef = useRef<string | undefined>(data.prompt); // Track what we sent
 
+    // Helper: Check if node is image-type (includes local image model)
+    const isImageType = data.type === NodeType.IMAGE || data.type === NodeType.LOCAL_IMAGE_MODEL;
+    // Helper: Check if node is video-type (includes local video model)
+    const isVideoType = data.type === NodeType.VIDEO || data.type === NodeType.LOCAL_VIDEO_MODEL;
+    // Helper: Check if node is local model
+    const isLocalModel = data.type === NodeType.LOCAL_IMAGE_MODEL || data.type === NodeType.LOCAL_VIDEO_MODEL;
+
     // Sync local state ONLY when data.prompt changes externally (not from our own update)
     useEffect(() => {
         if (data.prompt !== lastSentPromptRef.current) {
@@ -103,8 +110,8 @@ export const NodeContent: React.FC<NodeContentProps> = ({
 
     return (
         <div className={`transition-all duration-200 ${!selected ? 'p-0 rounded-2xl overflow-hidden' : 'p-1'}`}>
-            {/* Hidden File Input - Always rendered for upload functionality */}
-            {data.type === NodeType.IMAGE && onUpload && (
+            {/* Hidden File Input - Always rendered for upload functionality (image types only) */}
+            {isImageType && onUpload && (
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -120,7 +127,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({
                     className={`relative w-full bg-black group/image ${!selected ? '' : 'rounded-xl overflow-hidden'}`}
                     style={getAspectRatioStyle()}
                 >
-                    {data.type === NodeType.VIDEO ? (
+                    {isVideoType ? (
                         <video src={data.resultUrl} controls loop className="w-full h-full object-cover" />
                     ) : (
                         <img src={data.resultUrl} alt="Generated" className="w-full h-full object-cover pointer-events-none" />
@@ -208,7 +215,7 @@ export const NodeContent: React.FC<NodeContentProps> = ({
             ${!selected ? 'rounded-2xl' : 'rounded-xl border border-dashed border-neutral-800'}`
                 }>
                     {/* Input Image Preview for Video Nodes */}
-                    {data.type === NodeType.VIDEO && inputUrl && (
+                    {isVideoType && inputUrl && (
                         <div className="absolute inset-0 z-0">
                             <img src={inputUrl} alt="Input Frame" className="w-full h-full object-cover opacity-30 blur-sm" />
                             <div className="absolute inset-0 bg-black/40" />
@@ -226,8 +233,8 @@ export const NodeContent: React.FC<NodeContentProps> = ({
                         </div>
                     ) : (
                         <div className="relative z-10 flex flex-col items-center gap-3">
-                            {/* Upload Button for Image Nodes */}
-                            {data.type === NodeType.IMAGE && onUpload && (
+                            {/* Upload Button for Image Nodes (including local image models) */}
+                            {isImageType && onUpload && (
                                 <>
                                     <input
                                         ref={fileInputRef}
@@ -248,14 +255,25 @@ export const NodeContent: React.FC<NodeContentProps> = ({
                             )}
 
                             <div className="text-neutral-700">
-                                {data.type === NodeType.VIDEO ? <Film size={40} /> : <ImageIcon size={40} />}
+                                {isVideoType ? (
+                                    isLocalModel ? <><Film size={40} /><HardDrive size={16} className="absolute -bottom-1 -right-1 text-purple-400" /></> : <Film size={40} />
+                                ) : (
+                                    isLocalModel ? <><ImageIcon size={40} /><HardDrive size={16} className="absolute -bottom-1 -right-1 text-purple-400" /></> : <ImageIcon size={40} />
+                                )}
                             </div>
                             {selected && (
                                 <>
                                     <div className="text-neutral-500 text-sm font-medium">
-                                        {data.type === NodeType.VIDEO && inputUrl ? "Ready to animate" : (data.type === NodeType.VIDEO ? "Waiting for input..." : "Try to:")}
+                                        {isVideoType && inputUrl
+                                            ? "Ready to animate"
+                                            : isVideoType
+                                                ? "Waiting for input..."
+                                                : isLocalModel
+                                                    ? "Select a model and enter prompt"
+                                                    : "Try to:"
+                                        }
                                     </div>
-                                    {data.type !== NodeType.VIDEO && (
+                                    {!isVideoType && !isLocalModel && (
                                         <div className="flex flex-col gap-1 w-full px-2">
                                             <TextNodeMenuItem
                                                 icon={<ImageIcon size={16} />}

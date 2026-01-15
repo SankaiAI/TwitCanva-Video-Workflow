@@ -16,7 +16,8 @@ import {
   Copy,
   Files,
   Layers,
-  ChevronRight
+  ChevronRight,
+  HardDrive
 } from 'lucide-react';
 import { ContextMenuState, NodeType } from '../types';
 
@@ -328,7 +329,28 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           />
         )}
 
+        {/* --- Local Model Section --- */}
+        <div className={`my-2 border-t mx-2 ${canvasTheme === 'dark' ? 'border-neutral-800' : 'border-neutral-100'}`} />
+        <div className={`px-2 py-1 text-xs font-medium ${canvasTheme === 'dark' ? 'text-neutral-500' : 'text-neutral-400'}`}>
+          Local Models (Open Source)
+        </div>
 
+        <MenuItem
+          icon={<HardDrive size={18} />}
+          label="Local Image Model"
+          desc="Use downloaded open-source models"
+          badge="NEW"
+          onClick={() => onSelectType(NodeType.LOCAL_IMAGE_MODEL)}
+          canvasTheme={canvasTheme}
+        />
+        <MenuItem
+          icon={<HardDrive size={18} />}
+          label="Local Video Model"
+          desc="AnimateDiff, SVD, and more"
+          badge="NEW"
+          onClick={() => onSelectType(NodeType.LOCAL_VIDEO_MODEL)}
+          canvasTheme={canvasTheme}
+        />
       </div>
     </div>
   );

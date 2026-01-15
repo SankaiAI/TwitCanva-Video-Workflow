@@ -7,7 +7,8 @@
     "dev": "concurrently \"npm run server\" \"vite\"",
     "server": "node server/index.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:local-models": "node -e \"require('child_process').execSync(process.platform === 'win32' ? 'setup-local-models.bat' : 'bash setup-local-models.sh', {stdio: 'inherit'})\""
   },
   "dependencies": {
     "@fal-ai/client": "^1.8.0",
@@ -16,6 +17,9 @@
     "@langchain/google-genai": "^2.0.4",
     "@langchain/langgraph": "^1.0.4",
     "@lobehub/icons": "^3.0.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@types/three": "^0.182.0",
     "face-api.js": "^0.22.2",
     "form-data": "^4.0.5",
     "lucide-react": "^0.556.0",
@@ -23,6 +27,7 @@
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "sharp": "^0.34.5",
+    "three": "^0.182.0",
     "twitter-api-v2": "^1.28.0"
   },
   "devDependencies": {

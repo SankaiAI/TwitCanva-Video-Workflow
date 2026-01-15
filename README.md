@@ -30,6 +30,7 @@ A modern, AI-powered canvas application for generating and manipulating images a
 - **📹 Resolution Options** - 720p and 1080p for videos
 - **🔒 Secure API** - Backend proxy keeps API keys safe
 - **🔄 Auto-Model Selection** - Filters models based on input compatibility
+- **🖥️ Local Open-Source Models** - Run Stable Diffusion, ControlNet, Qwen on your GPU
 - **⚖️ Commercial Friendly** - Dual-licensed or permissive terms for commercial growth
 
 
@@ -143,84 +144,130 @@ If you prefer using Docker to run the application in a containerized environment
    - Data persists in the local `library/` folder
    - To stop: `docker compose down`
 
-## 📁 Project Structure
+### Optional: Local Open-Source Models Setup
 
+TwitCanva supports running open-source AI models (like Stable Diffusion, Qwen Camera Control, ControlNet) locally on your GPU. This is **optional** - the cloud-based AI models work without this setup.
+
+**Requirements:**
+- NVIDIA GPU with 8GB+ VRAM (12GB+ recommended for larger models)
+- Python 3.10+
+- CUDA-compatible drivers
+
+**Setup:**
+```bash
+# Option 1: Use npm script (recommended)
+npm run setup:local-models
+
+# Option 2: Run setup script directly
+# Windows:
+setup-local-models.bat
+
+# Linux/macOS:
+chmod +x setup-local-models.sh
+./setup-local-models.sh
 ```
-TwitCanva/
-├── src/                          # Frontend source code
-│   ├── components/               # React components
-│   │   ├── canvas/               # Canvas node components
-│   │   │   ├── CanvasNode.tsx    # Main node wrapper
-│   │   │   ├── NodeContent.tsx   # Node content display
-│   │   │   ├── NodeControls.tsx  # Node control panel (model selection, prompts)
-│   │   │   └── NodeConnectors.tsx# Connection points
-│   │   ├── modals/               # Modal dialogs
-│   │   │   ├── ImageEditorModal.tsx  # Image editing
-│   │   │   └── CreateAssetModal.tsx  # Asset creation
-│   │   ├── AssetLibraryPanel.tsx # Reusable assets panel
-│   │   ├── ChatPanel.tsx         # AI chat interface
-│   │   ├── WorkflowPanel.tsx     # Workflow save/load UI
-│   │   ├── HistoryPanel.tsx      # Asset history browser
-│   │   ├── ContextMenu.tsx       # Right-click menu
-│   │   ├── TopBar.tsx            # Application header
-│   │   └── Toolbar.tsx           # Canvas toolbar
-│   ├── hooks/                    # Custom React hooks
-│   │   ├── useCanvasNavigation.ts# Viewport/zoom/pan
-│   │   ├── useNodeManagement.ts  # Node CRUD operations
-│   │   ├── useConnectionDragging.ts# Connection dragging + validation
-│   │   ├── useNodeDragging.ts    # Node dragging
-│   │   ├── useGeneration.ts      # AI generation logic (multi-model)
-│   │   ├── useGroupManagement.ts # Node grouping
-│   │   ├── useSelectionBox.ts    # Multi-select
-│   │   ├── useChatAgent.ts       # Chat agent hook
-│   │   ├── useWorkflow.ts        # Workflow management
-│   │   └── useHistory.ts         # Undo/redo
-│   ├── services/                 # API integration
-│   │   └── geminiService.ts      # Backend API calls
-│   ├── utils/                    # Utility functions
-│   │   ├── videoHelpers.ts       # Video processing
-│   │   └── connectionHelpers.ts  # Connection calculations
-│   ├── types.ts                  # TypeScript definitions
-│   ├── App.tsx                   # Main app component
-│   └── index.tsx                 # Entry point
-│
-├── server/                       # Backend server
-│   ├── index.js                  # Express server entry
-│   ├── routes/                   # API route handlers
-│   │   ├── generation.js         # Image/video generation endpoints
-│   │   ├── twitter.js            # X (Twitter) posting endpoints
-│   │   └── tiktok-post.js        # TikTok posting endpoints
-│   ├── services/                 # External API integrations
-│   │   ├── gemini.js             # Google Gemini/Veo service
-│   │   ├── kling.js              # Kling AI service (V1-V2.5)
-│   │   ├── fal.js                # Fal.ai service (Kling V2.6 Motion Control)
-│   │   ├── hailuo.js             # Hailuo AI (MiniMax) service
-│   │   ├── openai.js             # OpenAI GPT Image service
-│   │   ├── twitter.js            # X (Twitter) OAuth & posting service
-│   │   └── tiktok-post.js        # TikTok OAuth & posting service
-│   ├── tools/                    # Utility tools (non-AI)
-│   │   └── tiktok.js             # TikTok video downloader
-│   ├── utils/                    # Utility functions
-│   │   └── base64.js             # Base64 encoding helpers
-│   └── agent/                    # LangGraph chat agent
-│       ├── index.js              # Agent entry point
-│       ├── graph/                # LangGraph definition
-│       ├── prompts/              # System prompts
-│       └── tools/                # Agent tools
-│
-├── library/                      # All stored data
-│   ├── images/                   # Saved images (.png + .json metadata)
-│   ├── videos/                   # Saved videos (.mp4 + .json metadata)
-│   ├── workflows/                # Saved workflows (.json)
-│   ├── chats/                    # Chat session history (.json)
-│   └── assets/                   # User uploaded assets
-│
-├── .env                          # Environment variables (create this)
-├── .gitignore                    # Git ignore rules
-├── package.json                  # Dependencies and scripts
-├── vite.config.ts                # Vite configuration
-└── tsconfig.json                 # TypeScript configuration
+
+This will:
+1. Create a Python virtual environment (`venv/`)
+2. Install PyTorch with CUDA support (~2.8GB download)
+3. Create the `models/` directory structure
+4. Test GPU detection
+
+**Adding Models:**
+
+Download models from [HuggingFace](https://huggingface.co/models), [Civitai](https://civitai.com), or similar sites (`.safetensors`, `.ckpt`, or `.pt` files) and place them in the appropriate folder:
+
+| Folder | Model Types | Examples |
+|--------|-------------|----------|
+| `models/checkpoints/` | Main image generation models | Stable Diffusion 1.5, SDXL, DreamShaper, Juggernaut XL, Flux |
+| `models/loras/` | LoRA adapters for styles/characters | Art styles, character LoRAs, detail enhancers |
+| `models/controlnet/` | Guided generation models | OpenPose, Canny, Depth, Tile |
+| `models/video/` | Video generation models | AnimateDiff, Stable Video Diffusion (SVD) |
+
+**Using Local Models:**
+1. Right-click on canvas → Add Nodes
+2. Select "Local Image Model" or "Local Video Model"
+3. Choose your downloaded model from the dropdown
+4. Enter a prompt and generate!
+
+> 📖 For detailed documentation, see [docs/local-model-support.md](docs/local-model-support.md)
+
+### Optional: Camera Angle Control Setup
+
+Transform your generated images with AI-powered camera angle manipulation using the Qwen Image Edit model.
+
+#### Option 1: Cloud Deployment (Recommended)
+For users without high-end GPUs, we provide a Modal-based cloud deployment.
+
+1. **Install Modal**:
+   ```bash
+   pip install modal
+   modal setup
+   ```
+
+2. **Deploy the App**:
+   ```bash
+   modal deploy modal/camera_angle.py
+   ```
+
+3. **Configure Environment**:
+   Copy the generated `generate` endpoint URL and add it to your `.env` file:
+   ```env
+   VITE_MODAL_CAMERA_ENDPOINT=https://your-workspace--camera-angle-control-cameraangle-generate.modal.run
+   ```
+
+4. **Managing Costs**:
+   - **Auto scale-down**: Containers automatically shut down after 5 minutes of inactivity (no charges when idle).
+   - **Stop the app completely**: Run `modal app stop camera-angle-control` to disable the endpoint entirely.
+   - **Restart after stopping**: Run `modal deploy modal/camera_angle.py` again to re-enable.
+   
+   > **Tip**: Stop the app when not actively using the feature to avoid any accidental charges.
+
+#### Option 2: Local Deployment (Advanced)
+This feature requires a **24GB VRAM GPU** (RTX 3090/4090).
+
+**Download Models (~35GB):**
+```bash
+# Activate venv
+.\venv\Scripts\activate    # Windows
+source venv/bin/activate   # Linux/macOS
+
+# Download fast transformer (~20GB)
+huggingface-cli download linoyts/Qwen-Image-Edit-Rapid-AIO \
+    --local-dir models/camera-control/qwen-rapid-aio \
+    --include "transformer/*"
+
+# Download camera angle LoRA (~236MB)
+huggingface-cli download dx8152/Qwen-Edit-2509-Multiple-angles \
+    镜头转换.safetensors \
+    --local-dir models/camera-control/loras
 ```
+
+**Configure HuggingFace Cache (Recommended):**
+
+By default, HuggingFace caches models to your C: drive. Move the cache to prevent filling up your system drive:
+
+```powershell
+# Windows - Set cache to D: drive
+[System.Environment]::SetEnvironmentVariable("HF_HOME", "D:\HuggingFace_Cache", "User")
+# Restart terminal after running
+```
+
+```bash
+# Linux/macOS - Add to ~/.bashrc or ~/.zshrc
+export HF_HOME="/path/to/your/cache"
+source ~/.bashrc
+```
+
+**Start Camera Angle Server:**
+```bash
+.\start-camera-server.bat    # Windows
+./start-camera-server.sh     # Linux/macOS
+# Server runs on http://localhost:8100
+```
+
+> 📖 For detailed documentation, see [docs/camera-angle-control.md](docs/camera-angle-control.md)
+
 
 ## 💾 Asset Storage
 

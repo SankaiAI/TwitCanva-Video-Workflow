@@ -33,3 +33,15 @@ library/
 # docs
 docs/cloud_migration_plan.md
 
+# Python virtual environment (local models)
+venv/
+__pycache__/
+*.pyc
+
+# Local AI models (too large to commit)
+models/
+.offload_cache/
+
+# Agent workflows and shared utilities
+.agent/
+.shared/

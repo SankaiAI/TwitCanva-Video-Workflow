@@ -1,0 +1,20 @@
+# TwitCanva Local Models - Python Requirements
+# Install with: pip install -r requirements.txt
+# Or use: npm run setup:local-models
+
+# Core ML Framework
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Diffusion Models
+diffusers>=0.28.0
+accelerate>=0.25.0
+transformers>=4.36.0
+
+# Image Processing
+pillow>=9.0.0
+numpy>=1.24.0
+
+# Model Hub
+huggingface-hub>=0.20.0
+safetensors>=0.4.0

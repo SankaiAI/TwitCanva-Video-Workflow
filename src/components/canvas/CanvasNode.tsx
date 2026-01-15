@@ -10,6 +10,7 @@ import { NodeData, NodeStatus, NodeType } from '../../types';
 import { NodeConnectors } from './NodeConnectors';
 import { NodeContent } from './NodeContent';
 import { NodeControls } from './NodeControls';
+import { ChangeAnglePanel } from './ChangeAnglePanel';
 
 interface CanvasNodeProps {
   data: NodeData;
@@ -249,6 +250,220 @@ export const CanvasNode: React.FC<CanvasNodeProps> = ({
           </div>
 
 
+        </div>
+      </div>
+    );
+  }
+
+  // Special rendering for Camera Angle node (result view)
+  if (data.type === NodeType.CAMERA_ANGLE) {
+    return (
+      <div
+        className={`absolute flex items-center group/node touch-none pointer-events-auto`}
+        style={{
+          transform: `translate(${data.x}px, ${data.y}px)`,
+          transition: 'box-shadow 0.2s',
+          zIndex: selected ? 50 : 10
+        }}
+        onPointerDown={(e) => onNodePointerDown(e, data.id)}
+        onContextMenu={(e) => onContextMenu(e, data.id)}
+      >
+        <NodeConnectors nodeId={data.id} onConnectorDown={onConnectorDown} canvasTheme={canvasTheme} />
+
+        {/* Relative wrapper for the Card */}
+        <div className="relative group/nodecard">
+          {/* Unified Toolbar - Appears above the card on hover */}
+          {data.resultUrl && (
+            <div
+              className="absolute -top-20 left-0 right-0 flex justify-center opacity-0 group-hover/nodecard:opacity-100 transition-opacity z-20"
+              style={{
+                transform: `scale(${localScale})`,
+                transformOrigin: 'bottom center'
+              }}
+            >
+              <div className="flex items-center gap-1 px-2 py-1.5 bg-neutral-900/95 rounded-full border border-neutral-700 shadow-xl backdrop-blur-md">
+                {/* Change Angle Button - Re-enable tweaking */}
+                <button
+                  onClick={() => onUpdate(data.id, {
+                    angleMode: !data.angleMode,
+                    angleSettings: data.angleSettings || { rotation: 0, tilt: 0, scale: 0, wideAngle: false }
+                  })}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${data.angleMode
+                    ? 'bg-blue-500 text-white'
+                    : 'text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                    }`}
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                  Change Angle
+                </button>
+                {/* Separator */}
+                <div className="w-px h-4 bg-neutral-600 mx-1" />
+
+                {/* Expand Button */}
+                <button
+                  onClick={() => onExpand?.(data.resultUrl!)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="p-1.5 text-neutral-300 hover:bg-neutral-700 hover:text-white rounded-full transition-colors"
+                  title="View full size"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                </button>
+                {/* Post to X Button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onPostToX?.(data.id, data.resultUrl!, 'image'); }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="p-1.5 text-neutral-300 hover:bg-neutral-700 hover:text-white rounded-full transition-colors"
+                  title="Post to X"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </button>
+                {/* Download Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (data.resultUrl) {
+                      const filename = `image_${data.id}.png`;
+                      const cleanUrl = data.resultUrl.split('?')[0];
+                      if (data.resultUrl.startsWith('data:')) {
+                        const link = document.createElement('a');
+                        link.href = data.resultUrl;
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      } else {
+                        fetch(cleanUrl, { cache: 'no-store' })
+                          .then(res => res.blob())
+                          .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          })
+                          .catch(() => {
+                            const link = document.createElement('a');
+                            link.href = cleanUrl;
+                            link.download = filename;
+                            link.target = '_blank';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          });
+                      }
+                    }
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="p-1.5 text-neutral-300 hover:bg-neutral-700 hover:text-white rounded-full transition-colors"
+                  title="Download"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+                {/* Drag to Chat Handle */}
+                <div
+                  draggable
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({
+                      nodeId: data.id,
+                      url: data.resultUrl,
+                      type: 'image'
+                    }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                    onDragStart?.(data.id, true);
+                  }}
+                  onDragEnd={() => onDragEnd?.()}
+                  className="p-1.5 bg-cyan-500/80 hover:bg-cyan-400 rounded-full text-white cursor-grab active:cursor-grabbing"
+                  title="Drag to chat"
+                >
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="9" cy="5" r="1" fill="currentColor" />
+                    <circle cx="9" cy="12" r="1" fill="currentColor" />
+                    <circle cx="9" cy="19" r="1" fill="currentColor" />
+                    <circle cx="15" cy="5" r="1" fill="currentColor" />
+                    <circle cx="15" cy="12" r="1" fill="currentColor" />
+                    <circle cx="15" cy="19" r="1" fill="currentColor" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Node Card */}
+          <div
+            className={`relative rounded-2xl transition-all duration-200 flex flex-col ${isDark ? 'bg-[#0f0f0f] border border-neutral-700 shadow-2xl' : 'bg-white border border-neutral-200 shadow-lg'} ${selected ? 'ring-1 ring-blue-500/30' : ''}`}
+            style={{
+              width: '340px',
+            }}
+          >
+            {/* Header */}
+            <div className="absolute -top-8 left-0 text-sm px-2 py-0.5 rounded font-medium text-blue-400">
+              Camera Angle
+            </div>
+
+            {/* Content Area */}
+            <div
+              className={`flex flex-col items-center justify-center ${data.resultUrl ? 'p-0' : 'p-6'}`}
+              style={{ minHeight: data.resultUrl ? 'auto' : '340px' }}
+            >
+              {data.resultUrl ? (
+                <img
+                  src={data.resultUrl}
+                  alt="Content"
+                  className={`rounded-xl w-full h-auto object-cover ${selected ? 'ring-2 ring-blue-500 shadow-2xl' : ''}`}
+                  draggable={false}
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-neutral-500">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <span className="text-sm">Generating new angle...</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Control Panel (Only for re-adjusting angle if needed) */}
+          {selected && showControls && data.angleMode && data.resultUrl && (
+            <div className="absolute top-[calc(100%+12px)] left-1/2 -translate-x-1/2 flex justify-center z-[100]">
+              <div
+                style={{
+                  transform: `scale(${localScale})`,
+                  transformOrigin: 'top center',
+                  transition: 'transform 0.1s ease-out'
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <ChangeAnglePanel
+                  imageUrl={data.resultUrl}
+                  settings={data.angleSettings || { rotation: 0, tilt: 0, scale: 0, wideAngle: false }}
+                  onSettingsChange={(settings) => onUpdate(data.id, { angleSettings: settings })}
+                  onClose={() => onUpdate(data.id, { angleMode: false })}
+                  onGenerate={onChangeAngleGenerate ? () => onChangeAngleGenerate(data.id) : () => { }}
+                  isLoading={isLoading}
+                  canvasTheme={canvasTheme}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
