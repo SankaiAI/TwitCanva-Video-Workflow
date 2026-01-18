@@ -170,13 +170,21 @@ const ImagePlane: React.FC<{ imageUrl: string }> = ({ imageUrl }) => {
 
 // ============================================================================
 // DRAGGABLE SPHERE COMPONENT
+// Uses direct mesh manipulation during drag to avoid React state jitter
 // ============================================================================
+
+// Shared ref type for live angle updates during drag
+interface LiveAnglesRef {
+    rotation: number;
+    tilt: number;
+}
 
 interface DraggableSphereProps {
     position: THREE.Vector3;
     color: string;
     type: 'rotation' | 'tilt';
-    onDrag: (type: 'rotation' | 'tilt', angle: number) => void;
+    liveAngles: React.MutableRefObject<LiveAnglesRef>; // Shared ref for real-time updates
+    onDragEnd: (type: 'rotation' | 'tilt', angle: number) => void;  // Final commit on release
     isDragging: boolean;
     setDragging: (type: 'rotation' | 'tilt' | null) => void;
 }
@@ -185,7 +193,8 @@ const DraggableSphere: React.FC<DraggableSphereProps> = ({
     position,
     color,
     type,
-    onDrag,
+    liveAngles,
+    onDragEnd,
     isDragging,
     setDragging
 }) => {
@@ -194,9 +203,27 @@ const DraggableSphere: React.FC<DraggableSphereProps> = ({
     const planeRef = useRef(new THREE.Plane());
     const intersectPoint = useRef(new THREE.Vector3());
 
+    // Store the current angle during drag (not in React state to avoid re-renders)
+    const currentAngle = useRef<number>(0);
+    // Track the initial angle when drag starts
+    const initialAngle = useRef<number>(0);
+    // Track previous dragging state to detect drag-end transition
+    const wasDragging = useRef<boolean>(false);
+
+    // Initialize angle from position prop
+    useEffect(() => {
+        if (type === 'rotation') {
+            initialAngle.current = Math.atan2(position.x, position.z) * (180 / Math.PI);
+        } else {
+            initialAngle.current = Math.atan2(position.y, position.z) * (180 / Math.PI);
+        }
+        currentAngle.current = initialAngle.current;
+    }, [position, type]);
+
     const handlePointerDown = useCallback((e: any) => {
         e.stopPropagation();
         setDragging(type);
+
         // Set up intersection plane
         if (type === 'rotation') {
             // XZ plane (horizontal)
@@ -214,21 +241,81 @@ const DraggableSphere: React.FC<DraggableSphereProps> = ({
         (gl.domElement as HTMLElement).style.cursor = 'grabbing';
     }, [type, setDragging, gl]);
 
+    // Direct mesh position update during drag - bypasses React entirely
     useFrame(() => {
-        if (!isDragging) return;
+        if (!meshRef.current) return;
 
-        raycaster.setFromCamera(pointer, camera);
-        if (raycaster.ray.intersectPlane(planeRef.current, intersectPoint.current)) {
+        if (isDragging) {
+            raycaster.setFromCamera(pointer, camera);
+            if (raycaster.ray.intersectPlane(planeRef.current, intersectPoint.current)) {
+                let degrees: number;
+                let newPos: THREE.Vector3;
+
+                if (type === 'rotation') {
+                    // Calculate angle on XZ plane
+                    const angle = Math.atan2(intersectPoint.current.x, intersectPoint.current.z);
+                    degrees = Math.max(-90, Math.min(90, angle * (180 / Math.PI)));
+                    // Calculate constrained position on the arc
+                    const rad = degrees * (Math.PI / 180);
+                    newPos = new THREE.Vector3(
+                        ORBIT_RADIUS * Math.sin(rad),
+                        0,
+                        ORBIT_RADIUS * Math.cos(rad)
+                    );
+                } else {
+                    // Calculate angle on ZY plane
+                    const angle = Math.atan2(intersectPoint.current.y, intersectPoint.current.z);
+                    degrees = Math.max(-45, Math.min(90, angle * (180 / Math.PI)));
+                    // Calculate constrained position on the arc
+                    const rad = degrees * (Math.PI / 180);
+                    newPos = new THREE.Vector3(
+                        0,
+                        ORBIT_RADIUS * Math.sin(rad),
+                        ORBIT_RADIUS * Math.cos(rad)
+                    );
+                }
+
+                // Store current angle for final commit
+                currentAngle.current = degrees;
+
+                // Directly update mesh position - NO React state update for ball!
+                meshRef.current.position.copy(newPos);
+
+                // Update shared ref for camera indicator (NO state update!)
+                if (type === 'rotation') {
+                    liveAngles.current.rotation = degrees;
+                } else {
+                    liveAngles.current.tilt = degrees;
+                }
+            }
+            wasDragging.current = true;
+        } else {
+            // When not dragging, only sync position from props if NOT just released from drag
+            // This prevents flash from stale props during state update cycle
+            // The liveAngles already has the correct position, so we calculate from that
+            const currentRotation = liveAngles.current.rotation;
+            const currentTilt = liveAngles.current.tilt;
+
             if (type === 'rotation') {
-                // Calculate angle on XZ plane
-                const angle = Math.atan2(intersectPoint.current.x, intersectPoint.current.z);
-                const degrees = angle * (180 / Math.PI);
-                onDrag('rotation', Math.round(Math.max(-90, Math.min(90, degrees))));
+                const rad = currentRotation * (Math.PI / 180);
+                meshRef.current.position.set(
+                    ORBIT_RADIUS * Math.sin(rad),
+                    0,
+                    ORBIT_RADIUS * Math.cos(rad)
+                );
             } else {
-                // Calculate angle on ZY plane
-                const angle = Math.atan2(intersectPoint.current.y, intersectPoint.current.z);
-                const degrees = angle * (180 / Math.PI);
-                onDrag('tilt', Math.round(Math.max(-45, Math.min(90, degrees))));
+                const rad = currentTilt * (Math.PI / 180);
+                meshRef.current.position.set(
+                    0,
+                    ORBIT_RADIUS * Math.sin(rad),
+                    ORBIT_RADIUS * Math.cos(rad)
+                );
+            }
+
+            // Only commit on transition from dragging to not-dragging
+            if (wasDragging.current) {
+                wasDragging.current = false;
+                onDragEnd(type, Math.round(currentAngle.current));
             }
         }
     });
@@ -259,37 +346,60 @@ const DraggableSphere: React.FC<DraggableSphereProps> = ({
 
 // ============================================================================
 // CAMERA INDICATOR
+// Uses direct mesh manipulation for smooth updates during drag
 // ============================================================================
 
 interface CameraIndicatorProps {
     rotation: number;
     tilt: number;
+    liveAngles: React.MutableRefObject<LiveAnglesRef>;
+    isDragging: boolean;
 }
 
-const CameraIndicator: React.FC<CameraIndicatorProps> = ({ rotation, tilt }) => {
-    const position = useMemo(() => {
-        const thetaRad = rotation * (Math.PI / 180);
-        const phiRad = tilt * (Math.PI / 180);
-        const r = ORBIT_RADIUS * 0.7;
+const CameraIndicator: React.FC<CameraIndicatorProps> = ({ rotation, tilt, liveAngles, isDragging }) => {
+    const groupRef = useRef<THREE.Group>(null);
 
+    // Calculate position from angles
+    const calculatePosition = (rot: number, t: number): THREE.Vector3 => {
+        const thetaRad = rot * (Math.PI / 180);
+        const phiRad = t * (Math.PI / 180);
+        const r = ORBIT_RADIUS * 0.7;
         return new THREE.Vector3(
             r * Math.cos(phiRad) * Math.sin(thetaRad),
             r * Math.sin(phiRad) + 0.5,
             r * Math.cos(phiRad) * Math.cos(thetaRad)
         );
-    }, [rotation, tilt]);
+    };
 
-    // Calculate rotation to look at center
-    const lookRotation = useMemo(() => {
+    // Calculate look rotation from position
+    const calculateLookRotation = (pos: THREE.Vector3): THREE.Euler => {
         const euler = new THREE.Euler();
-        const direction = new THREE.Vector3(0, 0.8, 0).sub(position).normalize();
-        const matrix = new THREE.Matrix4().lookAt(position, new THREE.Vector3(0, 0.8, 0), new THREE.Vector3(0, 1, 0));
+        const matrix = new THREE.Matrix4().lookAt(pos, new THREE.Vector3(0, 0.8, 0), new THREE.Vector3(0, 1, 0));
         euler.setFromRotationMatrix(matrix);
         return euler;
-    }, [position]);
+    };
+
+    // Direct update - always read from liveAngles ref (always up-to-date)
+    useFrame(() => {
+        if (!groupRef.current) return;
+
+        // Always use liveAngles - it's synced with props when not dragging
+        const currentRotation = liveAngles.current.rotation;
+        const currentTilt = liveAngles.current.tilt;
+
+        const pos = calculatePosition(currentRotation, currentTilt);
+        const lookRot = calculateLookRotation(pos);
+
+        groupRef.current.position.copy(pos);
+        groupRef.current.rotation.copy(lookRot);
+    });
+
+    // Initial position from props
+    const initialPosition = useMemo(() => calculatePosition(rotation, tilt), [rotation, tilt]);
+    const initialRotation = useMemo(() => calculateLookRotation(initialPosition), [initialPosition]);
 
     return (
-        <group position={position} rotation={lookRotation}>
+        <group ref={groupRef} position={initialPosition} rotation={initialRotation}>
             {/* Camera body - larger size */}
             <Box args={[0.35, 0.25, 0.2]} position={[0, 0, 0]}>
                 <meshStandardMaterial color="#4a5568" />
@@ -349,6 +459,68 @@ const AxisLines: React.FC = () => {
 };
 
 // ============================================================================
+// DASHED GUIDE LINE (camera to image center)
+// Uses direct updates from liveAngles ref for smooth real-time movement
+// ============================================================================
+
+interface DashedGuideLineProps {
+    liveAngles: React.MutableRefObject<LiveAnglesRef>;
+}
+
+const DashedGuideLine: React.FC<DashedGuideLineProps> = ({ liveAngles }) => {
+    const lineRef = useRef<any>(null);
+
+    // Calculate camera position from angles
+    const calculateCameraPosition = (rot: number, t: number): THREE.Vector3 => {
+        const thetaRad = rot * (Math.PI / 180);
+        const phiRad = t * (Math.PI / 180);
+        const r = ORBIT_RADIUS * 0.7;
+        return new THREE.Vector3(
+            r * Math.cos(phiRad) * Math.sin(thetaRad),
+            r * Math.sin(phiRad) + 0.5,
+            r * Math.cos(phiRad) * Math.cos(thetaRad)
+        );
+    };
+
+    const imageCenter = useMemo(() => new THREE.Vector3(0, 0.8, 0), []);
+
+    // Update line points every frame using setPositions for Line2
+    useFrame(() => {
+        if (!lineRef.current) return;
+
+        const cameraPos = calculateCameraPosition(liveAngles.current.rotation, liveAngles.current.tilt);
+
+        // Line2 from drei uses setPositions method
+        if (lineRef.current.geometry && lineRef.current.geometry.setPositions) {
+            lineRef.current.geometry.setPositions([
+                cameraPos.x, cameraPos.y, cameraPos.z,
+                imageCenter.x, imageCenter.y, imageCenter.z
+            ]);
+        }
+    });
+
+    // Initial position
+    const initialPos = useMemo(() => calculateCameraPosition(
+        liveAngles.current.rotation,
+        liveAngles.current.tilt
+    ), []);
+
+    return (
+        <Line
+            ref={lineRef}
+            points={[initialPos, imageCenter]}
+            color="#fbbf24"
+            lineWidth={1}
+            dashed
+            dashSize={0.1}
+            gapSize={0.08}
+            opacity={0.5}
+            transparent
+        />
+    );
+};
+
+// ============================================================================
 // MAIN 3D SCENE
 // ============================================================================
 
@@ -361,6 +533,33 @@ const Scene: React.FC<SceneProps> = ({
 }) => {
     const [dragging, setDragging] = useState<'rotation' | 'tilt' | null>(null);
     const { gl } = useThree();
+
+    // Shared ref for live angle updates during drag (no React state updates!)
+    // Initialize with props, will be updated by DraggableSphere during drag
+    const liveAngles = useRef<LiveAnglesRef>({ rotation, tilt });
+
+    // Sync liveAngles with props ONLY when props change from external source (e.g., Reset button)
+    // Use a ref to track if we're in a post-drag state to avoid overwriting with stale values
+    const wasJustDragging = useRef(false);
+
+    useEffect(() => {
+        if (dragging) {
+            wasJustDragging.current = true;
+        }
+    }, [dragging]);
+
+    useEffect(() => {
+        // Only sync from props if we weren't just dragging 
+        // (to avoid overwriting with stale values during the state update cycle)
+        if (!dragging && !wasJustDragging.current) {
+            liveAngles.current.rotation = rotation;
+            liveAngles.current.tilt = tilt;
+        }
+        // After props update from onDragEnd, reset the flag
+        if (!dragging && wasJustDragging.current) {
+            wasJustDragging.current = false;
+        }
+    }, [rotation, tilt, dragging]);
 
     // Handle pointer up globally
     React.useEffect(() => {
@@ -383,7 +582,7 @@ const Scene: React.FC<SceneProps> = ({
     const horizontalSpherePos = useMemo(() => getHorizontalPosition(rotation, ORBIT_RADIUS), [rotation]);
     const verticalSpherePos = useMemo(() => getVerticalPosition(tilt, ORBIT_RADIUS), [tilt]);
 
-    const handleDrag = useCallback((type: 'rotation' | 'tilt', angle: number) => {
+    const handleDragEnd = useCallback((type: 'rotation' | 'tilt', angle: number) => {
         if (type === 'rotation') {
             onRotationChange(angle);
         } else {
@@ -441,7 +640,8 @@ const Scene: React.FC<SceneProps> = ({
                 position={horizontalSpherePos}
                 color="#22d3ee"
                 type="rotation"
-                onDrag={handleDrag}
+                liveAngles={liveAngles}
+                onDragEnd={handleDragEnd}
                 isDragging={dragging === 'rotation'}
                 setDragging={setDragging}
             />
@@ -451,38 +651,23 @@ const Scene: React.FC<SceneProps> = ({
                 position={verticalSpherePos}
                 color="#ec4899"
                 type="tilt"
-                onDrag={handleDrag}
+                liveAngles={liveAngles}
+                onDragEnd={handleDragEnd}
                 isDragging={dragging === 'tilt'}
                 setDragging={setDragging}
             />
 
 
             {/* Camera indicator */}
-            <CameraIndicator rotation={rotation} tilt={tilt} />
+            <CameraIndicator
+                rotation={rotation}
+                tilt={tilt}
+                liveAngles={liveAngles}
+                isDragging={dragging !== null}
+            />
 
             {/* Dashed line from camera to image center */}
-            <Line
-                points={[
-                    (() => {
-                        const thetaRad = rotation * (Math.PI / 180);
-                        const phiRad = tilt * (Math.PI / 180);
-                        const r = ORBIT_RADIUS * 0.7;
-                        return new THREE.Vector3(
-                            r * Math.cos(phiRad) * Math.sin(thetaRad),
-                            r * Math.sin(phiRad) + 0.5,
-                            r * Math.cos(phiRad) * Math.cos(thetaRad)
-                        );
-                    })(),
-                    new THREE.Vector3(0, 0.8, 0)
-                ]}
-                color="#fbbf24"
-                lineWidth={1}
-                dashed
-                dashSize={0.1}
-                gapSize={0.08}
-                opacity={0.5}
-                transparent
-            />
+            <DashedGuideLine liveAngles={liveAngles} />
         </>
     );
 };
