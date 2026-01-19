@@ -10,6 +10,10 @@ A modern, AI-powered canvas application for generating and manipulating images a
 ![Vite](https://img.shields.io/badge/Vite-6.4.1-purple)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=SankaiAI/TwitCanva-Video-Workflow&type=date&legend=top-left)](https://www.star-history.com/#SankaiAI/TwitCanva-Video-Workflow&type=date&legend=top-left)
+
 ## ✨ Features
 
 - **🎨 Visual Canvas Interface** - Drag-and-drop node-based workflow
